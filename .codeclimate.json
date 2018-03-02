@@ -7,6 +7,7 @@
   },
   "exclude_patterns": [
     "*",
-    "!src/**/*.ts*"
+    "!src/**/*.ts*",
+    "src/**/*.spec.ts*"
   ]
 }
