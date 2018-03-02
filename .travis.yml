@@ -1,3 +1,6 @@
+env:
+  global:
+    - CC_TEST_REPORTER_ID=59b35599cb761fc9d2a304661e61330a8c6fb24a311b95a9dac708fd97d8d999
 sudo: required
 language: node_js
 node_js:
@@ -5,8 +8,12 @@ node_js:
 before_install: sudo apt-get install libcairo2-dev libjpeg8-dev libpango1.0-dev libgif-dev build-essential g++
 install:
     - yarn
+before_script:
+  - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+  - chmod +x ./cc-test-reporter
+  - ./cc-test-reporter before-build
 script:
-    - yarn run lint
     - yarn test --coverage --maxWorkers=2
     - cat ./coverage/lcov.info | ./node_modules/.bin/coveralls
-
+after_script:
+  - ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
