@@ -24,7 +24,7 @@ const styles: StyleRulesCallback<ClassNames> = (theme: Theme) => ({
 });
 
 interface Props {
-  linode: Linode.Linode & { recentEvent?: Linode.Event };
+  linode: Linode.Linode;
 }
 
 type CombinedProps = Props & WithStyles<ClassNames>;
