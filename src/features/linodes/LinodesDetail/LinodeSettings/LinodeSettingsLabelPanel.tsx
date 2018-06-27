@@ -50,6 +50,17 @@ class LinodeSettingsLabelPanel extends React.Component<CombinedProps, State> {
     submitting: false,
   };
 
+  static getDerivedStateFromProps = (nextProps:CombinedProps, prevState:State) => {
+    if (nextProps.linodeLabel !== prevState.initialValue) {
+      return {
+        ...prevState,
+        initialValue: nextProps.linodeLabel,
+        updatedValue: nextProps.linodeLabel
+      }
+    }
+    else { return null; }
+  }
+
   changeLabel = () => {
     this.setState(set(lensPath(['submitting']), true));
     this.setState(set(lensPath(['success']), undefined));
