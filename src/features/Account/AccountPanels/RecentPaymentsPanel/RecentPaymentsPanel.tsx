@@ -12,10 +12,12 @@ import TableRow from '@material-ui/core/TableRow';
 
 import DateTimeDisplay from 'src/components/DateTimeDisplay';
 import ExpansionPanel from 'src/components/ExpansionPanel';
-import PaginationFooter, { PaginationProps } from 'src/components/PaginationFooter';
+import PaginationFooter from 'src/components/PaginationFooter';
 import TableRowEmptyState from 'src/components/TableRowEmptyState';
 import TableRowError from 'src/components/TableRowError';
 import TableRowLoading from 'src/components/TableRowLoading';
+import withPagination, { PaginationProps } from 'src/components/withPagination';
+
 import { getPayments } from 'src/services/account';
 
 interface PaymentWithDate extends Linode.Payment { moment: moment.Moment };
@@ -28,21 +30,14 @@ const styles: StyleRulesCallback<ClassNames> = (theme: Theme) => ({
 
 interface Props { }
 
-interface State extends PaginationProps {
-  errors?: Linode.ApiFieldError[];
-  loading: boolean;
+interface State {
   data?: PaymentWithDate[],
 }
 
-type CombinedProps = Props & WithStyles<ClassNames>;
+type CombinedProps = Props & PaginationProps & WithStyles<ClassNames>;
 
 class RecentPaymentsPanel extends React.Component<CombinedProps, State> {
-  state: State = {
-    loading: true,
-    page: 1,
-    count: 1,
-    pageSize: 25,
-  };
+  state: State = {};
 
   mounted: boolean = false;
 
@@ -65,33 +60,38 @@ class RecentPaymentsPanel extends React.Component<CombinedProps, State> {
       }),
     );
 
-  requestPayments = (page: number = 1) => {
+  requestPayments = (
+    page: number = this.props.page,
+    pageSize: number = this.props.pageSize,
+  ) => {
     if (!this.mounted) { return; }
-
-    this.setState({
-      /** Only display loading if the data is undefined (initial state)   */
+    this.props.setPagination((prevState) => ({
+      ...prevState,
       loading: this.state.data === undefined,
       errors: undefined,
-    });
+    }));
 
-    return getPayments({ page_size: this.state.pageSize, page })
+    return getPayments({ page, page_size: pageSize })
       .then(({ data, page, pages, results }) => {
         if (!this.mounted) { return; }
 
-        this.setState({
-          loading: false,
+        this.setState({ data: this.addToItems(data) });
+
+        this.props.setPagination((prevState) => ({
+          ...prevState,
           page,
           count: results,
-          data: this.addToItems(data),
-        });
+          loading: false,
+        }));
       })
       .catch((response) => {
         if (!this.mounted) { return; }
 
         const fallbackError = [{ reason: 'Unable to retrieve payments.' }];
-        this.setState({
-          errors: pathOr(fallbackError, ['response', 'data', 'errors'], response),
-        })
+        this.props.setPagination((prevState) => ({
+          ...prevState,
+          errors: pathOr(fallbackError, ['response', 'data', 'errors'], response)
+        }));
       });
   }
 
@@ -104,12 +104,8 @@ class RecentPaymentsPanel extends React.Component<CombinedProps, State> {
   }
 
   render() {
-    const {
-      data,
-      page,
-      pageSize,
-      count,
-    } = this.state;
+    const { data } = this.state;
+    const { count, page, pageSize } = this.props;
 
     return (
       <ExpansionPanel onChange={this.handleExpansion} heading="Recent Payments">
@@ -139,7 +135,8 @@ class RecentPaymentsPanel extends React.Component<CombinedProps, State> {
   }
 
   renderContent = () => {
-    const { data, errors, loading } = this.state;
+    const { data } = this.state;
+    const { loading, errors } = this.props;
 
     if (loading) {
       return <TableRowLoading colSpan={3} />
@@ -170,21 +167,22 @@ class RecentPaymentsPanel extends React.Component<CombinedProps, State> {
     }
   }
 
-  handlePageChange = (page: number) => this.requestPayments(page);
+  handlePageChange = (page: number) => {
+    this.requestPayments(page, this.props.pageSize);
+    this.props.setPagination((prevState) => ({ ...prevState, page }));
+  };
 
   handlePageSizeChange = (pageSize: number) => {
     if (!this.mounted) { return; }
-
-    this.setState(
-      { pageSize },
-      () => { this.requestPayments() },
-    );
+    this.requestPayments(this.props.page, pageSize);
+    this.props.setPagination((prevState) => ({ ...prevState, pageSize }));
   }
 }
 
 const styled = withStyles(styles, { withTheme: true });
 
 const enhanced = compose(
+  withPagination,
   styled,
 );
 

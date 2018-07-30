@@ -12,10 +12,12 @@ import TableRow from '@material-ui/core/TableRow';
 
 import DateTimeDisplay from 'src/components/DateTimeDisplay';
 import ExpansionPanel from 'src/components/ExpansionPanel';
-import PaginationFooter, { PaginationProps } from 'src/components/PaginationFooter';
+import PaginationFooter from 'src/components/PaginationFooter';
 import TableRowEmptyState from 'src/components/TableRowEmptyState';
 import TableRowError from 'src/components/TableRowError';
 import TableRowLoading from 'src/components/TableRowLoading';
+import withPagination, { PaginationProps } from 'src/components/withPagination';
+
 import { getInvoices } from 'src/services/account';
 
 interface InvoiceWithDate extends Linode.Invoice { moment: moment.Moment };
@@ -28,21 +30,14 @@ const styles: StyleRulesCallback<ClassNames> = (theme: Theme) => ({
 
 interface Props { }
 
-interface State extends PaginationProps {
-  errors?: Linode.ApiFieldError[];
-  loading: boolean;
+interface State {
   data?: InvoiceWithDate[],
 }
 
-type CombinedProps = Props & WithStyles<ClassNames>;
+type CombinedProps = Props & PaginationProps & WithStyles<ClassNames>;
 
 class RecentInvoicesPanel extends React.Component<CombinedProps, State> {
-  state: State = {
-    loading: true,
-    page: 1,
-    count: 0,
-    pageSize: 25,
-  };
+  state: State = {};
 
   mounted: boolean = false;
 
@@ -65,33 +60,39 @@ class RecentInvoicesPanel extends React.Component<CombinedProps, State> {
       }),
     );
 
-  requestInvoices = (page: number = 1) => {
+  requestInvoices = (
+    page: number = this.props.page,
+    pageSize: number = this.props.pageSize,
+  ) => {
     if (!this.mounted) { return; }
-
-    this.setState({
-      /** Only display loading if the data is undefined (initial state)   */
+    this.props.setPagination((prevState) => ({
+      ...prevState,
       loading: this.state.data === undefined,
       errors: undefined,
-    });
+    }));
 
-    return getInvoices({ page_size: this.state.pageSize, page })
+    return getInvoices({ page, page_size: pageSize })
       .then(({ data, page, pages, results }) => {
         if (!this.mounted) { return; }
 
-        this.setState({
-          loading: false,
+        this.setState({ data: this.addToItems(data) });
+
+        this.props.setPagination((prevState) => ({
+          ...prevState,
           page,
           count: results,
-          data: this.addToItems(data),
-        });
+          loading: false,
+        }));
       })
       .catch((response) => {
         if (!this.mounted) { return; }
 
         const fallbackError = [{ reason: 'Unable to retrieve invoices.' }];
-        this.setState({
-          errors: pathOr(fallbackError, ['response', 'data', 'errors'], response),
-        })
+        this.props.setPagination((prevState) => ({
+          ...prevState,
+          loading: false,
+          errors: pathOr(fallbackError, ['response', 'data', 'errors'], response)
+        }));
       });
   }
 
@@ -104,12 +105,8 @@ class RecentInvoicesPanel extends React.Component<CombinedProps, State> {
   }
 
   render() {
-    const {
-      data,
-      page,
-      pageSize,
-      count,
-    } = this.state;
+    const { data } = this.state;
+    const { count, page, pageSize } = this.props;
 
     return (
       <ExpansionPanel
@@ -125,7 +122,7 @@ class RecentInvoicesPanel extends React.Component<CombinedProps, State> {
             </TableRow>
           </TableHead>
           <TableBody>
-            { this.renderContent() }
+            {this.renderContent()}
           </TableBody>
         </Table>
         {data && data.length > 0 &&
@@ -142,7 +139,8 @@ class RecentInvoicesPanel extends React.Component<CombinedProps, State> {
   }
 
   renderContent = () => {
-    const { data, errors, loading } = this.state;
+    const { data } = this.state;
+    const { loading, errors } = this.props;
 
     if (loading) {
       return <TableRowLoading colSpan={3} />
@@ -166,28 +164,29 @@ class RecentInvoicesPanel extends React.Component<CombinedProps, State> {
   renderRow = (item: InvoiceWithDate) => {
     return (
       <TableRow key={`invoice-${item.id}`}>
-        <TableCell><DateTimeDisplay value={item.date}/></TableCell>
+        <TableCell><DateTimeDisplay value={item.date} /></TableCell>
         <TableCell><Link to="">Invoice #{item.id}</Link></TableCell>
         <TableCell>${item.total}</TableCell>
       </TableRow>
     );
   };
 
-  handlePageChange = (page: number) => this.requestInvoices(page);
+  handlePageChange = (page: number) => {
+    this.requestInvoices(page, this.props.pageSize);
+    this.props.setPagination((prevState) => ({ ...prevState, page }));
+  };
 
   handlePageSizeChange = (pageSize: number) => {
     if (!this.mounted) { return; }
-
-    this.setState(
-      { pageSize },
-      () => { this.requestInvoices() },
-    );
+    this.requestInvoices(this.props.page, pageSize);
+    this.props.setPagination((prevState) => ({ ...prevState, pageSize }));
   }
 }
 
 const styled = withStyles(styles, { withTheme: true });
 
 const enhanced = compose(
+  withPagination,
   styled,
 );
 

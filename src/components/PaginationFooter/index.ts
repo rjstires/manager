@@ -1,2 +1,1 @@
-
-export { default, PaginationProps } from './PaginationFooter';
+export { default } from './PaginationFooter';

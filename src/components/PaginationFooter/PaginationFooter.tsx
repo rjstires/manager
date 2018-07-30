@@ -18,7 +18,7 @@ const styles: StyleRulesCallback<ClassNames> = (theme: Theme) => {
   });
 };
 
-export interface PaginationProps {
+interface PaginationProps {
   count: number;
   page: number;
   pageSize: number;

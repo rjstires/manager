@@ -18,11 +18,12 @@ import AddNewLink from 'src/components/AddNewLink';
 import setDocs from 'src/components/DocsSidebar/setDocs';
 import Grid from 'src/components/Grid';
 import LinearProgress from 'src/components/LinearProgress';
-import PaginationFooter, { PaginationProps } from 'src/components/PaginationFooter';
+import PaginationFooter from 'src/components/PaginationFooter';
 import Placeholder from 'src/components/Placeholder';
 import Table from 'src/components/Table';
 import TableRowError from 'src/components/TableRowError';
 import TableRowLoading from 'src/components/TableRowLoading';
+import withPagination, { PaginationProps } from 'src/components/withPagination';
 import { dcDisplayNames } from 'src/constants';
 import { events$, generateInFilter, resetEventsPolling } from 'src/events';
 import { sendToast } from 'src/features/ToastNotifications/toasts';
@@ -63,10 +64,8 @@ interface Props {
   openForCreating: typeof openForCreating;
 }
 
-interface State extends PaginationProps {
-  loading: boolean;
-  errors?: Linode.ApiFieldError[];
-  volumes: Linode.Volume[];
+interface State {
+  volumes?: Linode.Volume[];
   linodeLabels: { [id: number]: string };
   linodeStatuses: { [id: number]: string };
   configDrawer: {
@@ -87,15 +86,10 @@ interface State extends PaginationProps {
   };
 }
 
-type CombinedProps = Props & WithStyles<ClassNames>;
+type CombinedProps = Props & PaginationProps & WithStyles<ClassNames>;
 
 class VolumesLanding extends React.Component<CombinedProps, State> {
   state: State = {
-    volumes: [],
-    count: 0,
-    page: 1,
-    pageSize: 25,
-    loading: true,
     linodeLabels: {},
     linodeStatuses: {},
     configDrawer: {
@@ -138,7 +132,7 @@ class VolumesLanding extends React.Component<CombinedProps, State> {
   componentDidMount() {
     this.mounted = true;
 
-    this.getVolumes(undefined, undefined, true);
+    this.getVolumes(undefined, undefined);
 
     this.getLinodeLabels();
 
@@ -184,8 +178,7 @@ class VolumesLanding extends React.Component<CombinedProps, State> {
   }
 
   render() {
-    const { classes } = this.props;
-    const { count, loading } = this.state;
+    const { classes, count, loading } = this.props;
 
     if (!loading && count === 0) {
       return this.renderEmpty();
@@ -228,9 +221,9 @@ class VolumesLanding extends React.Component<CombinedProps, State> {
           </Table>
         </Paper>
         <PaginationFooter
-          count={this.state.count}
-          page={this.state.page}
-          pageSize={this.state.pageSize}
+          count={this.props.count}
+          page={this.props.page}
+          pageSize={this.props.pageSize}
           handlePageChange={this.handlePageChange}
           handleSizeChange={this.handlePageSizeChange}
         />
@@ -259,7 +252,8 @@ class VolumesLanding extends React.Component<CombinedProps, State> {
   }
 
   renderContent = () => {
-    const { loading, errors, volumes, count, linodeLabels, linodeStatuses } = this.state;
+    const { volumes, linodeLabels, linodeStatuses } = this.state;
+    const { count, errors, loading } = this.props;
 
     if (loading) {
       return this.renderLoading();
@@ -401,44 +395,56 @@ class VolumesLanding extends React.Component<CombinedProps, State> {
   };
 
   getVolumes = (
-    page: number = this.state.page,
-    pageSize: number = this.state.pageSize,
-    initial: boolean = false,
+    page: number = this.props.page,
+    pageSize: number = this.props.pageSize,
   ) => {
-    this.setState({ loading: initial });
+    this.props.setPagination((prevState) => ({
+      ...prevState,
+      loading: this.state.volumes === undefined,
+    }))
 
     return getVolumes({ page, page_size: pageSize })
-      .then((response) => {
-        if (!this.mounted) { return response.data; }
+      .then(({ data, page, results }) => {
+        if (!this.mounted) { return data; }
 
-        this.setState({
-          count: response.results,
-          page: response.page,
+        this.setState({ volumes: data });
+
+        this.props.setPagination((prevState) => ({
+          ...prevState,
+          count: results,
           loading: false,
-          volumes: response.data,
-        });
+          page,
+        }));
 
-        return response.data;
+        return data;
       })
-      .catch((err) => this.mounted && this.setState({
-        loading: false,
-        errors: pathOr([{ reason: 'Unable to load Volumes.' }], ['response', 'data', 'errors'], err),
-      }));
+      .catch((err) => {
+        if (!this.mounted) { return; }
+
+        this.props.setPagination((prevState) => ({
+          ...prevState,
+          loading: false,
+          errors: pathOr([{ reason: 'Unable to load Volumes.' }], ['response', 'data', 'errors'], err),
+        }));
+      });
   };
 
   handlePageSizeChange = (pageSize: number) => {
-    this.setState({ pageSize });
-    this.getVolumes(undefined, pageSize);
+    this.getVolumes(this.props.page, pageSize);
+    this.props.setPagination((prevState) => ({ ...prevState, pageSize }));
   }
 
   handlePageChange = (page: number) => {
-    this.setState({ page });
-    this.getVolumes(page);
+    this.getVolumes(page, this.props.pageSize);
+    this.props.setPagination((prevState) => ({ ...prevState, page }))
     scrollToTop();
   }
 
   getLinodeLabels() {
-    const linodeIDs = this.state.volumes.map(volume => volume.linode_id).filter(Boolean);
+    const { volumes } = this.state;
+    if (!volumes) { return; }
+
+    const linodeIDs = volumes.map(volume => volume.linode_id).filter(Boolean);
     const xFilter = generateInFilter('id', linodeIDs);
     getLinodes(undefined, xFilter)
       .then((response) => {
@@ -533,7 +539,8 @@ const styled = withStyles(styles, { withTheme: true });
 
 const documented = setDocs(VolumesLanding.docs);
 
-export default compose<Linode.TodoAny, Linode.TodoAny, Linode.TodoAny, Linode.TodoAny>(
+export default compose<any, any, any, any, any>(
+  withPagination,
   documented,
   connected,
   styled,

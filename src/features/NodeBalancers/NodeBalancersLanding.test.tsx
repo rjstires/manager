@@ -17,6 +17,11 @@ describe('NodeBalancers', () => {
           classes={{ root: '', title: '', NBStatus: '' }}
           setDocs={setDocs}
           clearDocs={clearDocs}
+          count={0}
+          page={1}
+          pageSize={25}
+          loading={true}
+          setPagination={jest.fn}
         />
       </LinodeThemeWrapper>
     </StaticRouter>,

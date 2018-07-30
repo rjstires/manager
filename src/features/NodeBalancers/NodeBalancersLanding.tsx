@@ -18,12 +18,13 @@ import Button from 'src/components/Button';
 import ConfirmationDialog from 'src/components/ConfirmationDialog';
 import setDocs, { SetDocsProps } from 'src/components/DocsSidebar/setDocs';
 import Grid from 'src/components/Grid';
-import PaginationFooter, { PaginationProps } from 'src/components/PaginationFooter';
+import PaginationFooter from 'src/components/PaginationFooter';
 import Placeholder from 'src/components/Placeholder';
 import SectionErrorBoundary from 'src/components/SectionErrorBoundary';
 import Table from 'src/components/Table';
 import TableRowError from 'src/components/TableRowError';
 import TableRowLoading from 'src/components/TableRowLoading';
+import withPagination, { PaginationProps } from 'src/components/withPagination';
 import IPAddress from 'src/features/linodes/LinodesLanding/IPAddress';
 import RegionIndicator from 'src/features/linodes/LinodesLanding/RegionIndicator';
 import { deleteNodeBalancer, getNodeBalancerConfigs, getNodeBalancers } from 'src/services/nodebalancers';
@@ -53,15 +54,14 @@ interface DeleteConfirmDialogState {
   errors?: Linode.ApiFieldError[];
 }
 
-interface State extends PaginationProps {
+interface State {
   deleteConfirmDialog: DeleteConfirmDialogState;
-  errors?: Linode.ApiFieldError[];
-  loading: boolean;
-  nodeBalancers: Linode.ExtendedNodeBalancer[];
+  nodeBalancers?: Linode.ExtendedNodeBalancer[];
   selectedNodeBalancerId?: number;
 }
 
 type CombinedProps = Props
+  & PaginationProps
   & WithStyles<ClassNames>
   & RouteComponentProps<{}>
   & SetDocsProps;
@@ -76,12 +76,7 @@ export class NodeBalancersLanding extends React.Component<CombinedProps, State> 
   };
 
   state: State = {
-    count: 0,
     deleteConfirmDialog: NodeBalancersLanding.defaultDeleteConfirmDialogState,
-    loading: true,
-    nodeBalancers: [],
-    page: 1,
-    pageSize: 25,
   };
 
   static docs = [
@@ -99,7 +94,7 @@ export class NodeBalancersLanding extends React.Component<CombinedProps, State> 
 
   componentDidMount() {
     this.mounted = true;
-    this.requestNodeBalancers(undefined, undefined, true);
+    this.requestNodeBalancers(undefined, undefined);
   }
 
   componentWillUnmount() {
@@ -107,12 +102,13 @@ export class NodeBalancersLanding extends React.Component<CombinedProps, State> 
   }
 
   requestNodeBalancers = (
-    page: number = this.state.page,
-    pageSize: number = this.state.pageSize,
-    initial: boolean = false,
+    page: number = this.props.page,
+    pageSize: number = this.props.pageSize,
   ) => {
-
-    this.setState({ loading: initial });
+    this.props.setPagination((prevState) => ({
+      ...prevState,
+      loading: this.state.nodeBalancers === undefined,
+    }));
     // this is pretty tricky. we need to make a call to get the configs for each nodebalancer
     // because the up and down time data lives in the configs along with the ports
     //
@@ -135,31 +131,38 @@ export class NodeBalancersLanding extends React.Component<CombinedProps, State> 
             .catch((error) => reject(error));
         });
       })
-      .then((response: Linode.ResourcePage<Linode.ExtendedNodeBalancer>) => {
-        this.setState({
-          nodeBalancers: response.data,
-          count: response.results,
-          page: response.page,
-          loading: false
-        });
+      .then(({ results, page, data }: Linode.ResourcePage<Linode.ExtendedNodeBalancer>) => {
+        if (!this.mounted) { return; }
+
+        this.setState({ nodeBalancers: data });
+
+        this.props.setPagination((prevState) => ({
+          ...prevState,
+          count: results,
+          page,
+          loading: false,
+        }));
       })
       .catch((error) => {
-        this.setState({
+        if (!this.mounted) { return; }
+
+        this.props.setPagination((prevState) => ({
+          ...prevState,
           loading: false,
           errors: pathOr([{ reason: 'Unable to load NodeBalancer data.' }], ['response', 'data', 'errors'], error),
-        })
+        }));
       });
   };
 
   handlePageChange = (page: number) => {
-    this.setState({ page });
-    this.requestNodeBalancers(page);
+    this.requestNodeBalancers(page, this.props.pageSize);
+    this.props.setPagination((prevState) => ({ ...prevState, page }));
     scrollToTop();
   }
 
   handlePageSizeChange = (pageSize: number) => {
-    this.setState({ pageSize });
-    this.requestNodeBalancers(this.state.page, pageSize);
+    this.requestNodeBalancers(this.props.page, pageSize);
+    this.props.setPagination((prevState) => ({ ...prevState, pageSize }));
     scrollToTop();
   }
 
@@ -185,8 +188,11 @@ export class NodeBalancersLanding extends React.Component<CombinedProps, State> 
 
     deleteNodeBalancer(selectedNodeBalancerId!)
       .then((response) => {
+        const { nodeBalancers } = this.state;
+        if (!nodeBalancers) { return; }
+
         this.setState({
-          nodeBalancers: this.state.nodeBalancers.filter((nodebalancer) => nodebalancer.id === selectedNodeBalancerId),
+          nodeBalancers: nodeBalancers.filter((nodebalancer) => nodebalancer.id === selectedNodeBalancerId),
           deleteConfirmDialog: {
             open: false,
             submitting: false,
@@ -213,14 +219,11 @@ export class NodeBalancersLanding extends React.Component<CombinedProps, State> 
     const { classes, history } = this.props;
 
     const {
-      count,
       deleteConfirmDialog: {
         open: deleteConfirmAlertOpen,
       },
-      loading,
-      page,
-      pageSize,
     } = this.state;
+    const { count, loading, page, pageSize } = this.props;
 
     if (!loading && count === 0) {
       return this.renderEmpty()
@@ -305,12 +308,8 @@ export class NodeBalancersLanding extends React.Component<CombinedProps, State> 
   }
 
   renderContent = () => {
-    const {
-      count,
-      errors,
-      loading,
-      nodeBalancers,
-    } = this.state;
+    const { nodeBalancers } = this.state;
+    const { count, errors, loading } = this.props;
 
     if (loading) {
       return this.renderLoading();
@@ -391,6 +390,7 @@ export class NodeBalancersLanding extends React.Component<CombinedProps, State> 
 const styled = withStyles(styles, { withTheme: true });
 
 export const enhanced = compose(
+  withPagination,
   styled,
   withRouter,
   SectionErrorBoundary,

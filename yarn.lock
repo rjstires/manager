@@ -963,6 +963,12 @@
   dependencies:
     csstype "^2.2.0"
 
+"@types/recompose@^0.26.2":
+  version "0.26.2"
+  resolved "https://registry.yarnpkg.com/@types/recompose/-/recompose-0.26.2.tgz#761e46f39e5bc2a9640f29510a8d21a0a73dc2a7"
+  dependencies:
+    "@types/react" "*"
+
 "@types/storybook__addon-actions@^3.0.3":
   version "3.0.3"
   resolved "https://registry.yarnpkg.com/@types/storybook__addon-actions/-/storybook__addon-actions-3.0.3.tgz#99287c0b9ee6b84ea571ee4cb42d0779c56af208"
@@ -8929,7 +8935,7 @@ rechoir@^0.6.2:
   dependencies:
     resolve "^1.1.6"
 
-"recompose@^0.26.0 || ^0.27.0", recompose@^0.27.0:
+"recompose@^0.26.0 || ^0.27.0", recompose@^0.27.0, recompose@^0.27.1:
   version "0.27.1"
   resolved "https://registry.yarnpkg.com/recompose/-/recompose-0.27.1.tgz#1a49e931f183634516633bbb4f4edbfd3f38a7ba"
   dependencies:

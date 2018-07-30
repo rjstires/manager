@@ -1,6 +1,7 @@
-import { compose, pathOr } from 'ramda';
+import { pathOr } from 'ramda';
 import * as React from 'react';
 import { Link, RouteComponentProps, withRouter } from 'react-router-dom';
+import compose from 'recompose/compose';
 
 import Button from '@material-ui/core/Button';
 import Paper from '@material-ui/core/Paper';
@@ -18,10 +19,11 @@ import ConfirmationDialog from 'src/components/ConfirmationDialog';
 import setDocs from 'src/components/DocsSidebar/setDocs';
 import ErrorState from 'src/components/ErrorState';
 import Grid from 'src/components/Grid';
-import PaginationFooter, { PaginationProps } from 'src/components/PaginationFooter';
+import PaginationFooter from 'src/components/PaginationFooter';
 import Placeholder from 'src/components/Placeholder';
 import Table from 'src/components/Table';
 import TableRowLoading from 'src/components/TableRowLoading';
+import withPagination, { PaginationProps } from 'src/components/withPagination';
 import { sendToast } from 'src/features/ToastNotifications/toasts';
 import { deleteDomain, getDomains } from 'src/services/domains';
 import scrollToTop from 'src/utilities/scrollToTop';
@@ -44,10 +46,8 @@ const styles: StyleRulesCallback<ClassNames> = (theme: Theme) => ({
 
 interface Props { }
 
-interface State extends PaginationProps {
-  domains: Linode.Domain[];
-  loading: boolean;
-  errors?: Error;
+interface State {
+  domains?: Linode.Domain[];
   importDrawer: {
     open: boolean,
     submitting: boolean,
@@ -68,15 +68,10 @@ interface State extends PaginationProps {
   };
 }
 
-type CombinedProps = Props & WithStyles<ClassNames> & RouteComponentProps<{}>;
+type CombinedProps = Props & WithStyles<ClassNames> & PaginationProps & RouteComponentProps<{}>;
 
 class DomainsLanding extends React.Component<CombinedProps, State> {
   state: State = {
-    domains: [],
-    page: 1,
-    count: 0,
-    pageSize: 25,
-    loading: true,
     importDrawer: {
       open: false,
       submitting: false,
@@ -106,47 +101,54 @@ class DomainsLanding extends React.Component<CombinedProps, State> {
   ];
 
   getDomains = (
-    page: number = this.state.page,
-    pageSize: number = this.state.pageSize,
-    initial: boolean = false,
+    page: number = this.props.page,
+    pageSize: number = this.props.pageSize,
   ) => {
     if (!this.mounted) { return; }
-    this.setState({ loading: initial });
+    this.props.setPagination((prevState) => ({
+      ...prevState,
+      loading: this.state.domains === undefined,
+    }))
 
     getDomains({ page, page_size: pageSize })
-      .then((response) => {
+      .then(({ data, page, results }) => {
         if (!this.mounted) { return; }
 
-        this.setState({
-          count: response.results,
-          domains: response.data,
+        this.setState({ domains: data });
+
+        this.props.setPagination((prevState) => ({
+          ...prevState,
+          count: results,
           loading: false,
-          page: response.page,
-        });
+          page,
+        }));
+
       })
       .catch((error) => {
         if (!this.mounted) { return; }
-        this.setState({
-          errors: pathOr([{ reason: 'Unable to load domains.' }], ['response', 'data', 'errors'], error),
+
+        this.props.setPagination((prevState) => ({
+          ...prevState,
           loading: false,
-        })
+          errors: pathOr([{ reason: 'Unable to load domains.' }], ['response', 'data', 'errors'], error)
+        }));
       });
   }
 
   handlePageChange = (page: number) => {
-    this.setState({ page });
-    this.getDomains(page);
+    this.getDomains(page, this.props.pageSize)
+    this.props.setPagination((prevState) => ({ ...prevState, page }));
     scrollToTop();
   };
 
   handlePageSizeChange = (pageSize: number) => {
-    this.setState({ pageSize });
-    this.getDomains(undefined, pageSize);
+    this.getDomains(this.props.page, pageSize);
+    this.props.setPagination((prevState) => ({ ...prevState, pageSize }));
   };
 
   componentDidMount() {
     this.mounted = true;
-    this.getDomains(undefined, undefined, true);
+    this.getDomains(undefined, undefined);
   }
 
   componentWillUnmount() {
@@ -183,7 +185,7 @@ class DomainsLanding extends React.Component<CombinedProps, State> {
     });
     if (domain) {
       this.setState({
-        domains: [...this.state.domains, domain as Linode.Domain],
+        domains: [...this.state.domains || [], domain as Linode.Domain],
       });
     }
   }
@@ -256,8 +258,7 @@ class DomainsLanding extends React.Component<CombinedProps, State> {
   }
 
   render() {
-    const { classes } = this.props;
-    const { count, loading } = this.state;
+    const { classes, count, loading } = this.props;
 
     if (!loading && count === 0) {
       return this.renderEmpty();
@@ -303,9 +304,9 @@ class DomainsLanding extends React.Component<CombinedProps, State> {
           </Table>
         </Paper>
         <PaginationFooter
-          count={this.state.count}
-          page={this.state.page}
-          pageSize={this.state.pageSize}
+          count={this.props.count}
+          page={this.props.page}
+          pageSize={this.props.pageSize}
           handlePageChange={this.handlePageChange}
           handleSizeChange={this.handlePageSizeChange}
         />
@@ -328,16 +329,18 @@ class DomainsLanding extends React.Component<CombinedProps, State> {
   }
 
   renderContent = () => {
-    const { loading, errors, count, domains } = this.state;
+    const { domains } = this.state;
+    const { count, errors, loading } = this.props;
 
     if (loading) {
       return this.renderLoading();
     }
+
     if (errors) {
       return this.renderLoading();
     }
 
-    if (count > 0) {
+    if (domains && count > 0) {
       return this.renderData(domains);
     }
 
@@ -406,9 +409,11 @@ class DomainsLanding extends React.Component<CombinedProps, State> {
   }
 }
 
+
 const styled = withStyles(styles, { withTheme: true });
 
 export default compose(
+  withPagination,
   setDocs(DomainsLanding.docs),
   withRouter,
   styled,
