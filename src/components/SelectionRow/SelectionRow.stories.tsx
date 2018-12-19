@@ -1,38 +1,42 @@
 import { storiesOf } from '@storybook/react';
 import * as React from 'react';
-import { Provider } from 'react-redux';
-import { StaticRouter } from 'react-router-dom';
-import SelectionRow, { SelectionRowProps } from 'src/components/SelectionRow';
-import store from 'src/store';
-
-import  axios from 'axios';
-import  MockAdapter from 'axios-mock-adapter';
-
-import { API_ROOT } from '../../constants';
-
-const ACCOUNT_EVENTS = `${API_ROOT}/account/events`;
-
-const mock = new MockAdapter(axios);
-
-mock
-  .onGet(ACCOUNT_EVENTS).reply(200, {
-    data: [],
-    page: 1,
-    pages: 1,
-    results: 0
-  })
+import { SelectionRow } from 'src/components/SelectionRow';
 
 interface State {
   selected: number;
 }
+
+const classes = {
+  root: '',
+  respPadding: '',
+  images: '',
+  libTitleContainer: '',
+  libRadio: '',
+  libRadioLabel: '',
+  libTitle: '',
+  libTitleLink: '',
+  libDescription: '',
+  colImages: '',
+  stackScriptCell: '',
+  stackScriptUsername: '',
+  deployButton: '',
+  detailsButton: '',
+};
+
+const commonProps = {
+  classes,
+  openStackScriptDrawer: () => null,
+  updateFor: [],
+};
 
 class InteractiveExample extends React.Component<{}, State> {
   state: State = {
     selected: 0,
   };
 
-  createItems = (): SelectionRowProps[] => [
+  createSelectableItems = () => [
     {
+      ...commonProps,
       checked: this.state.selected === 0,
       onSelect: () => this.setState({ selected: 0 }),
       label: 'Don\'t Stop Believing',
@@ -54,6 +58,7 @@ class InteractiveExample extends React.Component<{}, State> {
       isPublic: false,
     },
     {
+      ...commonProps,
       checked: this.state.selected === 1,
       onSelect: () => this.setState({ selected: 1 }),
       label: 'Every Rose Has Its Thorn',
@@ -74,6 +79,7 @@ class InteractiveExample extends React.Component<{}, State> {
       isPublic: false,
     },
     {
+      ...commonProps,
       checked: this.state.selected === 2,
       onSelect: () => this.setState({ selected: 2 }),
       label: 'The Final Countdown',
@@ -93,7 +99,10 @@ class InteractiveExample extends React.Component<{}, State> {
       canEdit: false,
       isPublic: false,
     },
+  ];
+  createItems = () => [
     {
+      ...commonProps,
       label: 'Livin\' on a Prayer',
       description: `Once upon a time not so long ago
       Tommy used to work on the docks, union's been on strike
@@ -111,6 +120,7 @@ class InteractiveExample extends React.Component<{}, State> {
       isPublic: false,
     },
     {
+      ...commonProps,
       label: 'Sweet Child O\' Mine',
       description: `She's got a smile it seems to me
       Reminds me of childhood memories
@@ -131,6 +141,7 @@ class InteractiveExample extends React.Component<{}, State> {
       isPublic: false,
     },
     {
+      ...commonProps,
       label: 'Africa',
       description: `I hear the drums echoing tonight
       But she hears only whispers of some quiet conversation
@@ -153,19 +164,26 @@ class InteractiveExample extends React.Component<{}, State> {
 
   render() {
     return (
-      <Provider store={store}>
-        <StaticRouter context={{}}>
-          <table>
-            <tbody>
-              {
-                this
-                  .createItems()
-                  .map((item, idx) => React.createElement(SelectionRow, { key: idx, ...item }))
-              }
-            </tbody>
-          </table>
-        </StaticRouter>
-      </Provider>
+      <React.Fragment>
+        <table>
+          <tbody>
+            {
+              this
+                .createItems()
+                .map((item, idx) => React.createElement(SelectionRow, { key: idx, ...item }))
+            }
+          </tbody>
+        </table>
+        <table>
+          <tbody>
+            {
+              this
+                .createSelectableItems()
+                .map((item, idx) => React.createElement(SelectionRow, { key: idx, ...item }))
+            }
+          </tbody>
+        </table>
+      </React.Fragment>
     );
   }
 }

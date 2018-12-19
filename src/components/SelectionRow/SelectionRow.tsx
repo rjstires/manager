@@ -4,7 +4,6 @@ import * as React from 'react';
 import { connect, MapDispatchToProps } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { compose as recompose } from 'recompose';
-
 import Button from 'src/components/Button';
 import { StyleRulesCallback, withStyles, WithStyles } from 'src/components/core/styles';
 import TableCell from 'src/components/core/TableCell';
@@ -107,7 +106,7 @@ const styles: StyleRulesCallback<ClassNames> = (theme) => ({
   }
 });
 
-export interface Props {
+export interface Props extends RenderGuardProps {
   label: string;
   description: string;
   images: string[];
@@ -129,7 +128,7 @@ interface DispatchProps {
   openStackScriptDrawer: (stackScriptId: number) => void;
 }
 
-export type CombinedProps = Props & WithStyles<ClassNames> & DispatchProps & RenderGuardProps;
+type CombinedProps = Props & WithStyles<ClassNames> & DispatchProps;
 
 export class SelectionRow extends React.Component<CombinedProps, {}> {
   render() {
@@ -241,16 +240,16 @@ export class SelectionRow extends React.Component<CombinedProps, {}> {
           </TableCell>
           {showDeployLink &&
             <TableCell>
-            <StackScriptsActionMenu
-              stackScriptID={stackScriptID}
-              stackScriptUsername={stackScriptUsername}
-              stackScriptLabel={label}
-              triggerDelete={triggerDelete!}
-              triggerMakePublic={triggerMakePublic!}
-              canDelete={canDelete}
-              canEdit={canEdit}
-              isPublic={isPublic}
-            />
+              <StackScriptsActionMenu
+                stackScriptID={stackScriptID}
+                stackScriptUsername={stackScriptUsername}
+                stackScriptLabel={label}
+                triggerDelete={triggerDelete!}
+                triggerMakePublic={triggerMakePublic!}
+                canDelete={canDelete}
+                canEdit={canEdit}
+                isPublic={isPublic}
+              />
             </TableCell>
           }
         </TableRow>
@@ -265,7 +264,7 @@ const mapDispatchToProps: MapDispatchToProps<DispatchProps, Props> = (dispatch) 
   };
 }
 
-export default recompose<CombinedProps, Props & RenderGuardProps>(
+export default recompose<CombinedProps, Props>(
   connect(undefined, mapDispatchToProps),
   RenderGuard,
   withStyles(styles),
