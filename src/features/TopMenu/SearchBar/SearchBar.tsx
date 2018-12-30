@@ -3,13 +3,13 @@ import Search from '@material-ui/icons/Search';
 import * as moment from 'moment';
 import { compose, isEmpty } from 'ramda';
 import * as React from 'react';
-import { connect } from 'react-redux';
 import { RouteComponentProps, withRouter } from 'react-router-dom';
 import _Control from 'react-select/lib/components/Control';
 import _Option from 'react-select/lib/components/Option';
 import IconButton from 'src/components/core/IconButton';
 import { StyleRulesCallback, withStyles, WithStyles } from 'src/components/core/styles';
 import EnhancedSelect, { Item } from 'src/components/EnhancedSelect/Select';
+import typesContainer, { Props as WithTypesProps } from 'src/containers/types.container';
 import { emptyResults, searchAll, SearchResults } from 'src/features/Search/utils';
 import { getAllEntities } from 'src/utilities/getAll';
 import SearchSuggestion from './SearchSuggestion';
@@ -384,13 +384,8 @@ class SearchBar extends React.Component<CombinedProps, State> {
 }
 
 const styled = withStyles(styles);
-interface WithTypesProps {
-  typesData: Linode.LinodeType[];
-}
 
-const withTypes = connect((state: ApplicationState, ownProps) => ({
-  typesData: state.__resources.types.entities,
-}));
+const withTypes = typesContainer();
 
 export default compose(
   styled,

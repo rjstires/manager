@@ -7,8 +7,8 @@ export interface WithDisplayType {
 
 const mapStateToProps: MapStateToProps<WithDisplayType, { linodeType: string }, ApplicationState> = (state, ownProps) => {
   const { linodeType } = ownProps;
-  const { entities, results } = state.__resources.types;
-  const type = getLinodeType(entities, results, linodeType);
+  const { itemsById } = state.orm.type.data;
+  const type = getLinodeType(itemsById, linodeType);
 
   return ({
     displayType:

@@ -11,6 +11,7 @@ import DisplayPrice from 'src/components/DisplayPrice';
 import Drawer from 'src/components/Drawer';
 import Grid from 'src/components/Grid';
 import Notice from 'src/components/Notice';
+import typesContainer, { Props as WithTypesProps } from 'src/containers/types.container';
 import { enableAllBackups, enableAutoEnroll, handleAutoEnrollToggle, handleClose, handleResetError, handleResetSuccess } from 'src/store/reducers/backupDrawer';
 import { getTypeInfo } from 'src/utilities/typesHelpers';
 import AutoEnroll from './AutoEnroll';
@@ -255,19 +256,13 @@ const connected = connect(mapStateToProps, mapDispatchToProps);
 
 const styled = withStyles(styles);
 
-interface WithTypesProps {
-  typesData: Linode.LinodeType[];
-}
-
-const withTypes = connect((state: ApplicationState, ownProps) => ({
-  typesData: state.__resources.types.entities,
-}));
+const withTypes = typesContainer();
 
 const enhanced = compose<CombinedProps, {}>(
   styled,
-  withTypes,
   connected,
-  withSnackbar
+  withSnackbar,
+  withTypes,
 );
 
 export default enhanced(BackupDrawer);

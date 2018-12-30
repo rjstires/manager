@@ -1,7 +1,6 @@
 import { InjectedNotistackProps, withSnackbar } from 'notistack';
 import { pathOr } from 'ramda';
 import * as React from 'react';
-import { connect } from 'react-redux';
 import { compose } from 'recompose';
 import ActionsPanel from 'src/components/ActionsPanel';
 import Button from 'src/components/Button';
@@ -10,6 +9,7 @@ import { StyleRulesCallback, withStyles, WithStyles } from 'src/components/core/
 import Typography from 'src/components/core/Typography';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 import SelectionCard from 'src/components/SelectionCard';
+import typesContainer from 'src/containers/types.container';
 import { resetEventsPolling } from 'src/events';
 import SelectPlanPanel, { ExtendedType } from 'src/features/linodes/LinodesCreate/SelectPlanPanel';
 import { withLinode } from 'src/features/linodes/LinodesDetail/context';
@@ -196,27 +196,29 @@ export class LinodeResize extends React.Component<CombinedProps, State> {
 
 const styled = withStyles(styles);
 
-interface WithTypesProps {
-  currentTypesData: ExtendedType[];
-  deprecatedTypesData: ExtendedType[];
-}
-
-const withTypes = connect((state: ApplicationState, ownProps) => ({
-  currentTypesData: state.__resources.types.entities
-    .filter((eachType) => eachType.successor === null)
-    .map(LinodeResize.extendType),
-
-  deprecatedTypesData: state.__resources.types.entities
-    .filter((eachType) => eachType.successor !== null)
-    .map(LinodeResize.extendType),
-
-}));
-
 const linodeContext = withLinode((context) => ({
   linodeId: pathOr(undefined, ['data', 'id'], context),
   linodeType: pathOr(undefined, ['data', 'type'], context),
   linodeStatus: pathOr(undefined, ['data', 'status'], context),
   linodeLabel: pathOr(undefined, ['data', 'label'], context),
+}));
+
+interface WithTypesProps {
+  currentTypesData: ExtendedType[];
+  deprecatedTypesData: ExtendedType[];
+  typesLoading: boolean;
+  typesError?: Error;
+}
+
+const withTypes = typesContainer((types, typesLoading, typesError) => ({
+  currentTypesData: types
+    .filter((type) => type.successor === null)
+    .map(LinodeResize.extendType),
+  deprecatedTypesData: types
+    .filter((tgype) => tgype.successor !== null)
+    .map(LinodeResize.extendType),
+  typesLoading,
+  typesError,
 }));
 
 export default compose<CombinedProps, {}>(

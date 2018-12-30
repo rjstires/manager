@@ -10,7 +10,6 @@ import 'rxjs/add/operator/debounce';
 import 'rxjs/add/operator/filter';
 import { Observable } from 'rxjs/Observable';
 import { Subscription } from 'rxjs/Subscription';
-
 import CircleProgress from 'src/components/CircleProgress';
 import ErrorState from 'src/components/ErrorState';
 import NotFound from 'src/components/NotFound';
@@ -20,23 +19,17 @@ import LinodeConfigSelectionDrawer from 'src/features/LinodeConfigSelectionDrawe
 import { newLinodeEvents } from 'src/features/linodes/events';
 import { Requestable } from 'src/requestableContext';
 import { getImage } from 'src/services/images';
-import {
-  getLinode,
-  getLinodeConfigs,
-  getType,
-  startMutation,
-  updateLinode,
-} from 'src/services/linodes';
+import { getLinode, getLinodeConfigs, startMutation, updateLinode } from 'src/services/linodes';
 import { _getLinodeDisks } from 'src/store/reducers/features/linodeDetail/disks';
 import { _getLinodeVolumes } from 'src/store/reducers/features/linodeDetail/volumes';
 import haveAnyBeenModified from 'src/utilities/haveAnyBeenModified';
 import scrollErrorIntoView from 'src/utilities/scrollErrorIntoView';
-
 import { ConfigsProvider, ImageProvider, LinodeProvider } from './context';
 import LinodeDetailErrorBoundary from './LinodeDetailErrorBoundary';
 import LinodesDetailHeader from './LinodesDetailHeader';
 import MutateDrawer from './MutateDrawer';
 import reloadableWithRouter from './reloadableWithRouter';
+
 
 interface ConfigDrawerState {
   open: boolean;
@@ -78,7 +71,7 @@ interface MatchProps { linodeId?: number };
 
 type RouteProps = RouteComponentProps<MatchProps>;
 
-type CombinedProps = DispatchProps & RouteProps & InjectedNotistackProps;
+type CombinedProps = DispatchProps & WithTypesProps & RouteProps & InjectedNotistackProps;
 
 const labelInputLens = lensPath(['labelInput']);
 const configsLens = lensPath(['context', 'configs']);
@@ -292,6 +285,8 @@ class LinodeDetail extends React.Component<CombinedProps, State> {
     if (!!linode
       && prevState.context.linode.data !== linode
       && linode.type) {
+
+      const getType = (id: string) => Promise.resolve(this.props.typesData[id]);
 
       getType(linode.type)
         .then((currentType: Linode.LinodeType) => {
@@ -650,10 +645,28 @@ const mapDispatchToProps: MapDispatchToProps<DispatchProps, RouteProps> = (dispa
 
 const connected = connect(undefined, mapDispatchToProps);
 
+interface WithTypesProps {
+  typesError?: Error;
+  typesLoading: boolean,
+  typesData: Record<string, Linode.LinodeType>,
+}
+
+const withTypes = connect((state: ApplicationState) => {
+  const { error, loading, data } = state.orm.type;
+  const { itemsById } = data;
+
+  return {
+    typesError: error,
+    typesLoading: loading,
+    typesData: itemsById,
+  }
+});
+
 const enhanced = compose(
   connected,
   reloadable,
   LinodeDetailErrorBoundary,
+  withTypes,
   withSnackbar
 );
 

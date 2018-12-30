@@ -14,6 +14,7 @@ import Grid from 'src/components/Grid';
 import PromiseLoader from 'src/components/PromiseLoader';
 import { ExtendedRegion } from 'src/components/SelectRegionPanel';
 import { dcDisplayNames } from 'src/constants';
+import typesContainer from 'src/containers/types.container';
 import { withRegions } from 'src/context/regions';
 import { displayType, typeLabelDetails } from 'src/features/linodes/presentation';
 import { getImages } from 'src/services/images';
@@ -382,34 +383,39 @@ export class LinodeCreate extends React.Component<CombinedProps, State> {
     );
   }
 }
-
 interface WithTypesProps {
   typesData: ExtendedType[];
+  typesLoading: boolean;
+  typesError?: Error;
 };
 
-const withTypes = connect((state: ApplicationState, ownProps) => ({
-  typesData: compose(
-    map<Linode.LinodeType, ExtendedType>((type) => {
-      const { label, memory, vcpus, disk, price: { monthly, hourly } } = type;
-      return {
-        ...type,
-        heading: label,
-        subHeadings: [
-          `$${monthly}/mo ($${hourly}/hr)`,
-          typeLabelDetails(memory, disk, vcpus),
-        ],
-      };
-    }),
-    /* filter out all the deprecated types because we don't to display them */
-    filter<any>((eachType: Linode.LinodeType) => {
-      if (!eachType.successor) {
-        return true;
-      }
-      return eachType.successor === null
-    }),
-  )(state.__resources.types.entities),
+const withTypes = typesContainer((data, typesLoading, typesError) => ({
+  typesData: doThingsToTypes(data),
+  typesLoading,
+  typesError,
 }));
 
+/** This is gross, and I blame me. */
+const doThingsToTypes = compose(
+  map<Linode.LinodeType, ExtendedType>((type) => {
+    const { label, memory, vcpus, disk, price: { monthly, hourly } } = type;
+    return {
+      ...type,
+      heading: label,
+      subHeadings: [
+        `$${monthly}/mo ($${hourly}/hr)`,
+        typeLabelDetails(memory, disk, vcpus),
+      ],
+    };
+  }),
+  /* filter out all the deprecated types because we don't to display them */
+  filter<any>((eachType: Linode.LinodeType) => {
+    if (!eachType.successor) {
+      return true;
+    }
+    return eachType.successor === null
+  }),
+);
 
 const regionsContext = withRegions(({
   data: regionsData,

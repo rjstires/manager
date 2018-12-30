@@ -11,6 +11,7 @@ import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 import Grid from 'src/components/Grid';
 import LineGraph from 'src/components/LineGraph';
 import Select from 'src/components/Select';
+import typesContainer, { Props as WithTypesProps } from 'src/containers/types.container';
 import { withImage, withLinode } from 'src/features/linodes/LinodesDetail/context';
 import { displayType, typeLabelLong } from 'src/features/linodes/presentation';
 import { getLinodeStats, getLinodeStatsByDate } from 'src/services/linodes';
@@ -645,14 +646,7 @@ const imageContext = withImage((context) => ({
   imageData: context.data!,
 }))
 
-
-interface WithTypesProps {
-  typesData: Linode.LinodeType[];
-}
-
-const withTypes = connect((state: ApplicationState, ownProps) => ({
-  typesData: state.__resources.types.entities,
-}));
+const withTypes = typesContainer();
 
 interface StateProps {
   volumesData?: Linode.Volume[]

@@ -1,10 +1,11 @@
-const getType = <T extends any>(entities: T[], ids: string[], id: null | string) => {
+type Id = string | number;
+
+const getType = <T extends any>(idMap: Record<Id, T>, id: Id) => {
   if (id === null) {
     return null;
   }
 
-  const foundIndex = ids.indexOf(id);
-  return foundIndex > -1 ? entities[foundIndex] : undefined
+  return idMap[id];
 }
 
 export default getType;

@@ -14,6 +14,7 @@ import TableRow from 'src/components/TableRow';
 import TableRowEmptyState from 'src/components/TableRowEmptyState';
 import TableRowError from 'src/components/TableRowError';
 import TableRowLoading from 'src/components/TableRowLoading';
+import typesContainer, { Props as WithTypesProps } from 'src/containers/types.container';
 import LinodeStatusIndicator from 'src/features/linodes/LinodesLanding/LinodeStatusIndicator';
 import RegionIndicator from 'src/features/linodes/LinodesLanding/RegionIndicator';
 import { displayType } from 'src/features/linodes/presentation';
@@ -148,14 +149,6 @@ class LinodesDashboardCard extends React.Component<CombinedProps> {
 
 const styled = withStyles(styles);
 
-interface WithTypesProps {
-  typesData: Linode.LinodeType[];
-}
-
-const withTypes = connect((state: ApplicationState, ownProps) => ({
-  typesData: state.__resources.types.entities,
-}));
-
 interface WithUpdatingLinodesProps {
   linodes: Linode.Linode[]
   loading: boolean;
@@ -200,6 +193,12 @@ const isWantedEvent = (e: Linode.Event): e is Linode.EntityEvent => {
   return false;
 }
 
-const enhanced = compose(withUpdatingLinodes, styled, withTypes);
+const withTypes = typesContainer();
+
+const enhanced = compose(
+  withUpdatingLinodes,
+  styled,
+  withTypes,
+);
 
 export default enhanced(LinodesDashboardCard) as React.ComponentType<{}>;

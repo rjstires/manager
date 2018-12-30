@@ -31,7 +31,7 @@ import TableCell from 'src/components/TableCell';
 import TextField from 'src/components/TextField';
 import { events$, resetEventsPolling } from 'src/events';
 import { linodeInTransition as isLinodeInTransition } from 'src/features/linodes/transitions';
-import { cancelBackups, enableBackups, getLinodeBackups, getType, takeSnapshot } from 'src/services/linodes';
+import { cancelBackups, enableBackups, getLinodeBackups, takeSnapshot } from 'src/services/linodes';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
 import getAPIErrorFor from 'src/utilities/getAPIErrorFor';
 import scrollErrorIntoView from 'src/utilities/scrollErrorIntoView';
@@ -98,7 +98,6 @@ interface ContextProps {
 
 interface PreloadedProps {
   backups: PromiseLoaderResponse<Linode.LinodeBackupsResponse>;
-  type: PromiseLoaderResponse<Linode.LinodeType>;
 }
 
 interface State {
@@ -121,7 +120,9 @@ interface State {
   enabling: boolean;
 }
 
-type CombinedProps = PreloadedProps
+type CombinedProps =
+  & PreloadedProps
+  & WithTypesProps
   & StateProps
   & WithStyles<ClassNames>
   & RouteComponentProps<{}>
@@ -218,7 +219,6 @@ class LinodeBackup extends React.Component<CombinedProps, State> {
   constructor(props: CombinedProps) {
     super(props);
 
-    /* TODO: use the timezone from the user's profile */
     this.windows = this.initWindows(this.props.timezone);
 
     this.days = [
@@ -380,10 +380,10 @@ class LinodeBackup extends React.Component<CombinedProps, State> {
 
   Placeholder = (): JSX.Element | null => {
     const { enabling } = this.state;
-    const backupsMonthlyPrice = path<number>(
-      ['types', 'response', 'addons', 'backups', 'price', 'monthly'],
-      this.props,
-    );
+    const { linodeType, typesData } = this.props;
+    const backupsMonthlyPrice = linodeType
+      ? path<number>([linodeType, 'addons', 'backups', 'price', 'monthly'], typesData)
+      : undefined;
 
     const backupPlaceholderText = backupsMonthlyPrice
       ? <React.Fragment>Three backup slots are executed and rotated automatically: a daily backup, a 2-7 day old backup, and 8-14 day old backup. To enable backups for just <strong>${backupsMonthlyPrice} per month</strong>, click below.</React.Fragment>
@@ -663,13 +663,6 @@ class LinodeBackup extends React.Component<CombinedProps, State> {
 
 const preloaded = PromiseLoader<ContextProps>({
   backups: (props) => getLinodeBackups(props.linodeID),
-  types: ({ linodeType }) => {
-    if (!linodeType) {
-      return Promise.resolve(undefined);
-    }
-
-    return getType(linodeType);
-  },
 });
 
 const styled = withStyles(styles);
@@ -694,10 +687,28 @@ const linodeContext = withLinode((context) => ({
   linodeType: context.data!.type,
 }));
 
+interface WithTypesProps {
+  typesError?: Error;
+  typesLoading: boolean,
+  typesData: Record<string, Linode.LinodeType>,
+}
+
+const withTypes = connect((state: ApplicationState) => {
+  const { error, loading, data } = state.orm.type;
+  const { itemsById } = data;
+
+  return {
+    typesError: error,
+    typesLoading: loading,
+    typesData: itemsById,
+  }
+});
+
 export default compose<CombinedProps, {}>(
   linodeContext,
   preloaded,
-  styled as any,
+  styled,
+  withTypes,
   withRouter,
   connected,
   withSnackbar

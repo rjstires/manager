@@ -23,13 +23,6 @@ declare interface ApplicationState {
   __resources: {
     profile: RequestableData<Linode.Profile>,
     accountSettings: RequestableData<Linode.AccountSettings>;
-    types: {
-      results: string[];
-      entities: Linode.LinodeType[];
-      loading: boolean;
-      lastUpdated: number;
-      error?: Linode.ApiFieldError[];
-    },
     linodes: {
       results: number[];
       entities: Linode.Linode[];

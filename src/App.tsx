@@ -29,7 +29,6 @@ import { requestAccountSettings } from 'src/store/reducers/resources/accountSett
 import { async as domainsAsync } from 'src/store/reducers/resources/domains';
 import { async as linodesAsync } from 'src/store/reducers/resources/linodes';
 import { requestProfile } from 'src/store/reducers/resources/profile';
-import { async as typesAsync } from 'src/store/reducers/resources/types';
 import composeState from 'src/utilities/composeState';
 import { notifications, theme as themeStorage } from 'src/utilities/storage';
 import WelcomeBanner from 'src/WelcomeBanner';
@@ -226,14 +225,12 @@ export class App extends React.Component<CombinedProps, State> {
       getProfile,
       requestDomains,
       requestLinodes,
-      requestTypes,
     } = this.props.actions;
 
     this.props._requestTypes();
     this.props._requestRegions();
     requestDomains();
     requestLinodes();
-    requestTypes();
 
     /*
      * We want to listen for migration events side-wide
@@ -382,7 +379,6 @@ interface DispatchProps {
     getAccountSettings: () => void;
     requestDomains: () => void;
     requestLinodes: () => void;
-    requestTypes: () => void;
   },
 }
 
@@ -394,7 +390,6 @@ const mapDispatchToProps: MapDispatchToProps<DispatchProps, Props> = (dispatch, 
       getAccountSettings: () => dispatch(requestAccountSettings()),
       requestDomains: () => dispatch(domainsAsync.requestDomains()),
       requestLinodes: () => dispatch(linodesAsync.requestLinodes()),
-      requestTypes: () => dispatch(typesAsync.requestTypes()),
     }
   };
 };

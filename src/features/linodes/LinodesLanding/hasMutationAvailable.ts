@@ -15,8 +15,9 @@ const hasMutation = (type?: null | Linode.LinodeType) => {
 
 const mapStateToProps: MapStateToProps<HasMutationAvailable, { linodeType: string }, ApplicationState> = (state, ownProps) => {
   const { linodeType } = ownProps;
-  const { entities, results } = state.__resources.types;
-  const type = getLinodeType(entities, results, linodeType);
+  const { itemsById } = state.orm.type.data;
+
+  const type = getLinodeType(itemsById, linodeType);
 
   return ({
     mutationAvailable: hasMutation(type),
