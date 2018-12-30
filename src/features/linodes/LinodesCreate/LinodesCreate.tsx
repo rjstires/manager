@@ -14,8 +14,8 @@ import Grid from 'src/components/Grid';
 import PromiseLoader from 'src/components/PromiseLoader';
 import { ExtendedRegion } from 'src/components/SelectRegionPanel';
 import { dcDisplayNames } from 'src/constants';
+import regionsContainer from 'src/containers/regions.container';
 import typesContainer from 'src/containers/types.container';
-import { withRegions } from 'src/context/regions';
 import { displayType, typeLabelDetails } from 'src/features/linodes/presentation';
 import { getImages } from 'src/services/images';
 import { getLinodes } from 'src/services/linodes';
@@ -47,11 +47,6 @@ const styles: StyleRulesCallback<ClassNames> = (theme) => ({
   },
 });
 
-interface RegionsContextProps {
-  regionsData: ExtendedRegion[];
-  regionsLoading: boolean;
-}
-
 interface PreloadedProps {
   images: { response: Linode.Image[] };
   linodes: { response: Linode.LinodeWithBackups[] };
@@ -59,7 +54,7 @@ interface PreloadedProps {
 
 type CombinedProps =
   & WithTypesProps
-  & RegionsContextProps
+  & WithRegionsProps
   & WithStyles<ClassNames>
   & PreloadedProps
   & StateProps
@@ -417,18 +412,20 @@ const doThingsToTypes = compose(
   }),
 );
 
-const regionsContext = withRegions(({
-  data: regionsData,
-  loading: regionsLoading,
-}) => ({
+interface WithRegionsProps {
+  regionsData: ExtendedRegion[];
+  regionsLoading: boolean;
+  regionsError?: Error;
+}
+
+const withRegions = regionsContainer((regionsData, regionsLoading, regionsError) => ({
+  regionsData: regionsData.map((region: Linode.Region) => ({
+    ...region,
+    display: dcDisplayNames[region.id],
+  })),
+  regionsError,
   regionsLoading,
-  regionsData: compose(
-    map((region: Linode.Region) => ({
-      ...region,
-      display: dcDisplayNames[region.id],
-    })),
-  )(regionsData || [])
-}))
+}));
 
 interface StateProps {
   accountBackups: boolean;
@@ -444,7 +441,7 @@ const styled = withStyles(styles);
 
 export default compose(
   preloaded,
-  regionsContext,
+  withRegions,
   withTypes,
   styled,
   withRouter,

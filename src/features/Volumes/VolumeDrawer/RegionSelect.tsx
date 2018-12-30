@@ -1,11 +1,12 @@
 import * as React from 'react';
+import { compose } from 'recompose';
 import FormControl from 'src/components/core/FormControl';
 import FormHelperText from 'src/components/core/FormHelperText';
 import InputLabel from 'src/components/core/InputLabel';
 import { StyleRulesCallback, withStyles, WithStyles } from 'src/components/core/styles';
 import MenuItem from 'src/components/MenuItem';
 import Select from 'src/components/Select';
-import { withRegions } from 'src/context/regions';
+import regionsContainer, { Props as WithRegionsProps } from 'src/containers/regions.container';
 import { formatRegion } from 'src/utilities';
 
 type ClassNames = 'root';
@@ -22,18 +23,17 @@ interface Props {
   value: any;
 }
 
-interface RegionsContextProps {
-  regions?: Linode.Region[];
-}
-
-type CombinedProps = Props & RegionsContextProps & WithStyles<ClassNames>;
+type CombinedProps =
+  & Props
+  & WithRegionsProps
+  & WithStyles<ClassNames>;
 
 const RegionSelect: React.StatelessComponent<CombinedProps> = (props) => {
   const {
     error,
     onChange,
     onBlur,
-    regions,
+    regionsData,
     value,
     name,
   } = props;
@@ -53,7 +53,7 @@ const RegionSelect: React.StatelessComponent<CombinedProps> = (props) => {
         data-qa-select-region
       >
         <MenuItem key="none" value="none">All Regions</MenuItem>
-        {regions && regions.map(eachRegion =>
+        {regionsData.map(eachRegion =>
           (<MenuItem
             key={eachRegion.id}
             value={eachRegion.id}
@@ -70,8 +70,11 @@ const RegionSelect: React.StatelessComponent<CombinedProps> = (props) => {
 
 const styled = withStyles(styles);
 
-const regionsContext = withRegions(({ data }) => ({
-  regions: data,
-}))
+const withRegions = regionsContainer();
 
-export default regionsContext(styled(RegionSelect)) as any;
+const enhanced = compose<CombinedProps, Props>(
+  styled,
+  withRegions,
+);
+
+export default enhanced(RegionSelect);
