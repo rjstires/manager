@@ -29,6 +29,8 @@ it('renders without crashing', () => {
               switchWrapper: '',
             }}
             userId={123456}
+            _requestRegions={jest.fn()}
+            _requestTypes={jest.fn()}
             profileLoading={false}
             actions={{
               getAccountSettings: jest.fn(),

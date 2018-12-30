@@ -2,7 +2,24 @@ declare interface ExtendedEvent extends Linode.Event {
   _deleted?: string;
   _initial?: boolean;
 }
+interface TableState<Item = any, Meta = any> {
+  items: string[];
+  itemsById: { [index: string]: Item };
+  meta: Meta;
+}
+
+declare interface LoadableTable<T = any, M = any> {
+  loading: boolean;
+  error?: Error;
+  lastUpdated: number;
+  data: TableState<T, M>;
+}
+
 declare interface ApplicationState {
+  orm: {
+    region: LoadableTable<Linode.Region>;
+    type: LoadableTable<Linode.LinodeType>
+  },
   __resources: {
     profile: RequestableData<Linode.Profile>,
     accountSettings: RequestableData<Linode.AccountSettings>;

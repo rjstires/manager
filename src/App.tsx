@@ -33,6 +33,7 @@ import { async as typesAsync } from 'src/store/reducers/resources/types';
 import composeState from 'src/utilities/composeState';
 import { notifications, theme as themeStorage } from 'src/utilities/storage';
 import WelcomeBanner from 'src/WelcomeBanner';
+import bootstrapContainer, { BootstrapActions } from './containers/bootstrap.container';
 
 shim(); // allows for .finally() usage
 
@@ -160,7 +161,9 @@ interface State {
   hasError: boolean;
 }
 
-type CombinedProps = Props
+type CombinedProps =
+  & BootstrapActions
+  & Props
   & DispatchProps
   & StateProps
   & WithStyles<ClassNames>
@@ -217,8 +220,17 @@ export class App extends React.Component<CombinedProps, State> {
   }
 
   componentDidMount() {
-    const { getAccountSettings, getNotifications, getProfile, requestDomains, requestLinodes, requestTypes } = this.props.actions;
+    const {
+      getAccountSettings,
+      getNotifications,
+      getProfile,
+      requestDomains,
+      requestLinodes,
+      requestTypes,
+    } = this.props.actions;
 
+    this.props._requestTypes();
+    this.props._requestRegions();
     requestDomains();
     requestLinodes();
     requestTypes();
@@ -278,14 +290,7 @@ export class App extends React.Component<CombinedProps, State> {
 
   render() {
     const { menuOpen, hasError } = this.state;
-    const {
-      classes,
-      documentation,
-      toggleTheme,
-      profileLoading,
-      profileError,
-    } = this.props;
-
+    const { classes, documentation, toggleTheme, profileLoading, profileError } = this.props;
     const hasDoc = documentation.length > 0;
 
     if (profileError || hasError) {
@@ -420,5 +425,6 @@ export default compose(
   connected,
   styled,
   withDocumentTitleProvider,
-  withSnackbar
+  withSnackbar,
+  bootstrapContainer,
 )(App);

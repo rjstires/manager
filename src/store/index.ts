@@ -1,6 +1,7 @@
 import { applyMiddleware, combineReducers, compose, createStore } from 'redux';
 import thunk from 'redux-thunk';
 import eventsMiddleware from './middleware/events';
+import requestMiddleware from './middleware/request.middleware';
 import authentication, { defaultState as authenticationDefaultState } from './reducers/authentication';
 import backups, { defaultState as backupsDefaultState } from './reducers/backupDrawer';
 import documentation, { defaultState as documentationDefaultState } from './reducers/documentation';
@@ -8,6 +9,7 @@ import domainDrawer, { defaultState as domainDrawerDefaultState } from './reduce
 import events, { defaultState as eventsDefaultState } from './reducers/events';
 import features, { defaultState as featuresDefaultState } from './reducers/features';
 import notifications, { DEFAULT_STATE as notificationsDefaultState } from './reducers/notifications';
+import orm, { defaultState as ormDefaultState } from './reducers/orm';
 import __resources, { defaultState as resourcesDefaultState } from './reducers/resources';
 import stackScriptDrawer, { defaultState as stackScriptDrawerDefaultState } from './reducers/stackScriptDrawer';
 import tagImportDrawer, { defaultState as tagDrawerDefaultState } from './reducers/tagImportDrawer';
@@ -16,6 +18,7 @@ import volumeDrawer, { defaultState as volumeDrawerDefaultState } from './reduce
 const reduxDevTools = (window as any).__REDUX_DEVTOOLS_EXTENSION__;
 
 const reducers = combineReducers<ApplicationState>({
+  orm,
   __resources,
   authentication,
   backups,
@@ -30,6 +33,7 @@ const reducers = combineReducers<ApplicationState>({
 });
 
 const defaultState: ApplicationState = {
+  orm: ormDefaultState,
   __resources: resourcesDefaultState,
   authentication: authenticationDefaultState,
   backups: backupsDefaultState,
@@ -43,9 +47,14 @@ const defaultState: ApplicationState = {
   volumeDrawer: volumeDrawerDefaultState,
 };
 
-const enhancers = compose(
-  applyMiddleware(thunk, eventsMiddleware),
-  reduxDevTools ? reduxDevTools() : (f: any) => f,
-) as any;
+const middleware = applyMiddleware(
+  requestMiddleware,
+  thunk,
+  eventsMiddleware,
+)
+
+const devtools = reduxDevTools ? reduxDevTools() : (f: any) => f
+
+const enhancers = compose(middleware, devtools);
 
 export default createStore(reducers, defaultState, enhancers);

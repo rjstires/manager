@@ -1329,6 +1329,11 @@
   dependencies:
     "@types/react" "*"
 
+"@types/redux-orm@^0.9.1":
+  version "0.9.1"
+  resolved "https://registry.yarnpkg.com/@types/redux-orm/-/redux-orm-0.9.1.tgz#d0375206986ce204e31bf8858fe4c922187629ce"
+  integrity sha512-W5iiYPxr1ZAe/yZzAvYXHk1kncamugOCDHPYhpjxFuEJ7sPU9bJBrkwHfPgsiZUPv/C8jdjDB4seIGXzm9PRgQ==
+
 "@types/redux-thunk@^2.1.0":
   version "2.1.0"
   resolved "http://registry.npmjs.org/@types/redux-thunk/-/redux-thunk-2.1.0.tgz#bc2b6e972961831afb82a9bf4f06726e351f9416"
@@ -6979,6 +6984,13 @@ ignore@^3.3.3:
   resolved "https://registry.yarnpkg.com/ignore/-/ignore-3.3.8.tgz#3f8e9c35d38708a3a7e0e9abb6c73e7ee7707b2b"
   integrity sha512-pUh+xUQQhQzevjRHHFqqcTy0/dP/kS9I8HSrUydhihjuD09W6ldVWFtIrwhXdUJHis3i2rZNqEHpZH/cbinFbg==
 
+immutable-ops@^0.5.2:
+  version "0.5.2"
+  resolved "https://registry.yarnpkg.com/immutable-ops/-/immutable-ops-0.5.2.tgz#3803d9bc65821bf4aaedf2f3542ec8714b73646a"
+  integrity sha1-OAPZvGWCG/Sq7fLzVC7IcUtzZGo=
+  dependencies:
+    ramda "^0.22.1"
+
 immutable@^3.8.1:
   version "3.8.2"
   resolved "https://registry.yarnpkg.com/immutable/-/immutable-3.8.2.tgz#c2439951455bb39913daf281376f1530e104adf3"
@@ -10690,6 +10702,11 @@ railroad-diagrams@^1.0.0:
   resolved "https://registry.yarnpkg.com/railroad-diagrams/-/railroad-diagrams-1.0.0.tgz#eb7e6267548ddedfb899c1b90e57374559cddb7e"
   integrity sha1-635iZ1SN3t+4mcG5Dlc3RVnN234=
 
+ramda@^0.22.1:
+  version "0.22.1"
+  resolved "https://registry.yarnpkg.com/ramda/-/ramda-0.22.1.tgz#031da0c3df417c5b33c96234757eb37033f36a0e"
+  integrity sha1-Ax2gw99BfFszyWI0dX6zcDPzag4=
+
 ramda@^0.25.0:
   version "0.25.0"
   resolved "https://registry.yarnpkg.com/ramda/-/ramda-0.25.0.tgz#8fdf68231cffa90bc2f9460390a0cb74a29b29a9"
@@ -11351,6 +11368,16 @@ reduce@^1.0.1:
   dependencies:
     object-keys "~1.0.0"
 
+redux-orm@^0.12.2:
+  version "0.12.2"
+  resolved "https://registry.yarnpkg.com/redux-orm/-/redux-orm-0.12.2.tgz#cc6c16f387c0f65f66aee8b8d53f1ecc933a9164"
+  integrity sha512-Hm4OPqseqB4WFw7DNCIOHhHNvcpOSwCBxBLOmchwqqq3XqCFldyAG3YMv9XJsvTTugw1z4PGlNgG1hXRiBgmBg==
+  dependencies:
+    babel-runtime "^6.26.0"
+    immutable-ops "^0.5.2"
+    lodash "^4.17.10"
+    reselect "^3.0.1"
+
 redux-thunk@*:
   version "2.3.0"
   resolved "https://registry.yarnpkg.com/redux-thunk/-/redux-thunk-2.3.0.tgz#51c2c19a185ed5187aaa9a2d08b666d0d6467622"
@@ -11686,6 +11713,11 @@ requires-port@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/requires-port/-/requires-port-1.0.0.tgz#925d2601d39ac485e091cf0da5c6e694dc3dcaff"
   integrity sha1-kl0mAdOaxIXgkc8NpcbmlNw9yv8=
+
+reselect@^3.0.1:
+  version "3.0.1"
+  resolved "https://registry.yarnpkg.com/reselect/-/reselect-3.0.1.tgz#efdaa98ea7451324d092b2b2163a6a1d7a9a2147"
+  integrity sha1-79qpjqdFEyTQkrKyFjpqHXqaIUc=
 
 reselect@^4.0.0:
   version "4.0.0"
