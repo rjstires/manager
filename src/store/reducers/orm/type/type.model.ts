@@ -1,20 +1,6 @@
 import { attr, fk, Model } from 'redux-orm';
 
-interface Fields {
-  id: string;
-  disk: number;
-  class: Linode.LinodeTypeClass;
-  price: Linode.PriceObject;
-  successor: string | null;
-  label: string;
-  addons: {
-    backups: { price: Linode.PriceObject };
-  };
-  network_out: number;
-  memory: number;
-  transfer: number;
-  vcpus: number;
-}
+type Fields = Linode.LinodeType;
 
 class Type extends Model<Fields> {
 }

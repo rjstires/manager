@@ -1,9 +1,6 @@
 import { attr, Model } from 'redux-orm';
 
-interface Fields {
-  id: string;
-  country: string;
-}
+type Fields = Linode.Region;
 
 class Region extends Model<Fields> {
 }
