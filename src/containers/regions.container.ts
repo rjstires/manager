@@ -10,8 +10,9 @@ export interface Props {
 }
 
 const mapState = <U>(map: MapToProps<Entity[], U>): MapStateToProps<U, {}, ApplicationState> => (state) => {
-  const { data, loading, error } = state.orm.region;
-  const { items, itemsById } = data;
+  const { read: { loading, error } } = state.requests.region;
+  const { items, itemsById } = state.orm.region;
+
   const list = items.map((id) => itemsById[id]);
 
   return map(list, loading, error);

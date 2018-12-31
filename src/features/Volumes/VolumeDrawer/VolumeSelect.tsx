@@ -1,10 +1,10 @@
 import * as React from 'react';
+import { compose } from 'recompose';
 import FormControl from 'src/components/core/FormControl';
 import FormHelperText from 'src/components/core/FormHelperText';
 import { StyleRulesCallback, withStyles, WithStyles } from 'src/components/core/styles';
 import EnhancedSelect, { Item } from 'src/components/EnhancedSelect/Select';
-import { getVolumes } from 'src/services/volumes';
-import { debounce } from 'throttle-debounce';
+import volumesContainer, { Props as WithVolumesProps } from 'src/containers/volumes.container';
 
 type ClassNames = 'root';
 
@@ -22,18 +22,16 @@ interface Props {
 }
 
 interface State {
-  loading: boolean;
   volumes: Item[];
   selectedVolumeId?: number;
 }
 
-type CombinedProps = Props & WithStyles<ClassNames>;
+type CombinedProps = Props & WithVolumesProps & WithStyles<ClassNames>;
 
 class VolumeSelect extends React.Component<CombinedProps, State> {
 
   state: State = {
     volumes: [],
-    loading: true,
   };
 
   componentDidMount() {
@@ -77,57 +75,35 @@ class VolumeSelect extends React.Component<CombinedProps, State> {
     }));
   }
 
-  getVolumeFilter = (inputValue: string) => {
-    const { region } = this.props;
-
-    if (region && region !== 'none') {
-      return {
-        label: {
-          '+contains': inputValue,
-        },
-        region
-      }
-    } else {
-      return {
-        label: {
-          '+contains': inputValue,
-        }
-      }
-    }
-  }
-
   searchVolumes = (inputValue: string = '') => {
-    this.setState({ loading: true });
+    const { volumesData } = this.props;
 
-    const filterVolumes = this.getVolumeFilter(inputValue);
+    if (inputValue === '') {
+      return this.setState({
+        volumes: this.renderLinodeOptions(volumesData),
+      })
+    }
 
-    getVolumes({}, filterVolumes)
-      .then((response) => {
-        return ({
-          ...response,
-          data: response.data.filter((v) => v.region === this.props.region && v.linode_id === null)
-        })
-      })
-      .then((response) => {
-        const volumes = this.renderLinodeOptions(response.data);
-        this.setState({ volumes, loading: false });
-      })
-      .catch(() => {
-        this.setState({ loading: false });
-      })
+    const results = volumesData.filter((volume) => {
+      return volume.region !== null && volume.region.includes(inputValue)
+        || volume.label.includes(inputValue);
+    });
+
+    this.setState({ volumes: this.renderLinodeOptions(results) });
   }
 
   onInputChange = (inputValue: string, actionMeta: { action: string }) => {
-    if (actionMeta.action !== 'input-change') { return; }
-    this.setState({ loading: true });
-    this.debouncedSearch(inputValue);
+    /**
+     * I've added menu-close to prevent stale search results from being displayed on the
+     * next open.
+     */
+    if (!['input-change', 'menu-close'].includes(actionMeta.action)) { return; }
+    this.searchVolumes(inputValue);
   }
-
-  debouncedSearch = debounce(400, false, this.searchVolumes);
 
   render() {
     const { error, name, onBlur } = this.props;
-    const { loading, volumes, selectedVolumeId } = this.state;
+    const { volumes, selectedVolumeId } = this.state;
 
     return (
       <FormControl fullWidth>
@@ -137,7 +113,6 @@ class VolumeSelect extends React.Component<CombinedProps, State> {
           label="Volume"
           placeholder="Select a Volume"
           value={this.getSelectedVolume(selectedVolumeId)}
-          isLoading={loading}
           errorText={error}
           options={volumes}
           onChange={this.setSelectedVolume}
@@ -151,4 +126,16 @@ class VolumeSelect extends React.Component<CombinedProps, State> {
 
 const styled = withStyles(styles);
 
-export default styled(VolumeSelect);
+const withVolumes = volumesContainer<WithVolumesProps, Props>(({ data, loading, error }, ownProps) => ({
+  volumesData: data
+    .filter(v => v.linode_id === null && v.region === ownProps.region),
+  volumesError: error,
+  volumesLoading: loading,
+}));
+
+const enhanced = compose<CombinedProps, Props>(
+  styled,
+  withVolumes,
+);
+
+export default enhanced(VolumeSelect);

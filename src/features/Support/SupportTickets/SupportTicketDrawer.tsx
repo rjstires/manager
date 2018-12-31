@@ -1,6 +1,7 @@
 import * as Bluebird from 'bluebird';
 import { compose, lensPath, pathOr, set } from 'ramda';
 import * as React from 'react';
+import { compose as composeComponent } from 'recompose';
 import ActionsPanel from 'src/components/ActionsPanel';
 import Button from 'src/components/Button';
 import { StyleRulesCallback, withStyles, WithStyles } from 'src/components/core/styles';
@@ -11,21 +12,20 @@ import MenuItem from 'src/components/MenuItem';
 import Notice from 'src/components/Notice';
 import SectionErrorBoundary from 'src/components/SectionErrorBoundary';
 import TextField from 'src/components/TextField';
+import volumesContainer, { Props as WithVolumesProps } from 'src/containers/volumes.container';
 import { getDomains } from 'src/services/domains';
 import { getLinodes } from 'src/services/linodes';
 import { getNodeBalancers } from 'src/services/nodebalancers';
 import { createSupportTicket, uploadAttachment } from 'src/services/support';
-import { getVolumes } from 'src/services/volumes';
 import composeState from 'src/utilities/composeState';
 import getAPIErrorFor from 'src/utilities/getAPIErrorFor';
-
 import AttachFileForm, { FileAttachment } from '../AttachFileForm';
 import { AttachmentError } from '../SupportTicketDetail/SupportTicketDetail';
 import { reshapeFiles } from '../ticketUtils';
 
 type ClassNames = 'root'
-|  'suffix'
-|  'actionPanel';
+  | 'suffix'
+  | 'actionPanel';
 
 const styles: StyleRulesCallback<ClassNames> = (theme) => ({
   root: {},
@@ -71,14 +71,14 @@ interface Ticket {
   summary: string;
 }
 
-type CombinedProps = Props & WithStyles<ClassNames>;
+type CombinedProps = Props & WithVolumesProps & WithStyles<ClassNames>;
 
 const L = {
-  open: lensPath(['ticket','open']),
-  summary: lensPath(['ticket','summary']),
-  description: lensPath(['ticket','description']),
-  entity_type: lensPath(['ticket','entity_type']),
-  entity_id: lensPath(['ticket','entity_id']),
+  open: lensPath(['ticket', 'open']),
+  summary: lensPath(['ticket', 'summary']),
+  description: lensPath(['ticket', 'description']),
+  entity_type: lensPath(['ticket', 'entity_type']),
+  entity_id: lensPath(['ticket', 'entity_id']),
   inputValue: lensPath(['inputValue']),
   data: lensPath(['data']),
   errors: lensPath(['errors']),
@@ -140,7 +140,7 @@ class SupportTicketDrawer extends React.Component<CombinedProps, State> {
     }
   }
 
-  handleThen = (response:Linode.ResourcePage<any>) => {
+  handleThen = (response: Linode.ResourcePage<any>) => {
     const type = this.state.ticket.entity_type;
     const entityItems = response.data.map((entity) => {
       return type === 'domain_id'
@@ -151,7 +151,7 @@ class SupportTicketDrawer extends React.Component<CombinedProps, State> {
     this.setState({ data: entityItems, loading: false, });
   }
 
-  handleCatch = (errors:Linode.ApiFieldError[]) => {
+  handleCatch = (errors: Linode.ApiFieldError[]) => {
     const err: Linode.ApiFieldError[] = [{ field: 'none', reason: 'An unexpected error has ocurred.' }];
     this.setState({
       errors: pathOr(err, ['response', 'data', 'errors'], errors),
@@ -160,6 +160,10 @@ class SupportTicketDrawer extends React.Component<CombinedProps, State> {
   }
 
   loadSelectedEntities = () => {
+
+    /** Faked it to kep the switch statement consisten. */
+    const getVolumes = () => Promise.resolve({ data: this.props.volumesData });
+
     this.setState({ loading: true });
     const entity = this.state.ticket.entity_type;
     // This is awkward but TypeScript does not like promises
@@ -215,13 +219,13 @@ class SupportTicketDrawer extends React.Component<CombinedProps, State> {
     ]);
   }
 
-  handleEntityIDChange = (selected:Item) => {
+  handleEntityIDChange = (selected: Item) => {
     if (selected) { this.setState(set(L.entity_id, selected.value)) }
   }
 
-  getHasNoEntitiesMessage = () : string =>  {
+  getHasNoEntitiesMessage = (): string => {
     const { data, ticket, loading } = this.state;
-    if (['none','general'].includes(ticket.entity_type) || loading) { return ''; }
+    if (['none', 'general'].includes(ticket.entity_type) || loading) { return ''; }
     else if (data.length === 0) {
       // User has selected a type from the drop-down but the entity list is empty.
       return `You don't have any ${entityIdtoNameMap[ticket.entity_type]}s on your account.`;
@@ -236,7 +240,7 @@ class SupportTicketDrawer extends React.Component<CombinedProps, State> {
     if (this.mounted) { this.resetDrawer(); }
   }
 
-  onInputValueChange = (inputValue:string) => {
+  onInputValueChange = (inputValue: string) => {
     this.setState({ inputValue });
   }
 
@@ -254,7 +258,7 @@ class SupportTicketDrawer extends React.Component<CombinedProps, State> {
   }
 
   updateFiles = (files: FileAttachment[]) => {
-    this.setState(set(L.files,files));
+    this.setState(set(L.files, files));
   }
 
   /* Reducer passed into Bluebird.reduce() below.
@@ -281,7 +285,7 @@ class SupportTicketDrawer extends React.Component<CombinedProps, State> {
         const newError = pathOr<string>(error, ['response', 'data', 'errors', 0, 'reason'], attachmentErrors);
         return {
           ...accumulator,
-          errors: [...accumulator.errors, { error: newError, file: attachment.file.get('name')} ]
+          errors: [...accumulator.errors, { error: newError, file: attachment.file.get('name') }]
         }
       });
   }
@@ -301,15 +305,15 @@ class SupportTicketDrawer extends React.Component<CombinedProps, State> {
 
     /* Upload each file as an attachment, and return a Promise that will resolve to
     *  an array of aggregated errors that may have occurred for individual uploads. */
-    return Bluebird.reduce(filesWithTarget, this.attachFileReducer, { success: [], errors: []});
+    return Bluebird.reduce(filesWithTarget, this.attachFileReducer, { success: [], errors: [] });
   }
 
   onSubmit = () => {
     const { description, entity_type, entity_id, summary } = this.state.ticket;
     const { onSuccess } = this.props;
-    if (!['none','general'].includes(entity_type) && !entity_id) {
+    if (!['none', 'general'].includes(entity_type) && !entity_id) {
       this.setState({
-        errors: [{ field: 'input', reason: `Please select a ${entityIdtoNameMap[entity_type]}.`}]
+        errors: [{ field: 'input', reason: `Please select a ${entityIdtoNameMap[entity_type]}.` }]
       });
       return;
     }
@@ -352,7 +356,7 @@ class SupportTicketDrawer extends React.Component<CombinedProps, State> {
   }
 
   renderEntityTypes = () => {
-    return Object.keys(entityMap).map((key:string, idx:number) => {
+    return Object.keys(entityMap).map((key: string, idx: number) => {
       return <MenuItem key={idx} value={entityMap[key]}>{key}</MenuItem>
     });
   }
@@ -408,7 +412,7 @@ class SupportTicketDrawer extends React.Component<CombinedProps, State> {
           <MenuItem key={'general'} value={'general'}>None/General</MenuItem>
         </TextField>
 
-        {!['none','general'].includes(ticket.entity_type) &&
+        {!['none', 'general'].includes(ticket.entity_type) &&
           <EnhancedSelect
             options={data}
             value={ticket.entity_id}
@@ -479,7 +483,10 @@ class SupportTicketDrawer extends React.Component<CombinedProps, State> {
 
 const styled = withStyles(styles);
 
-export default compose<any, any, any>(
+const enhanced = composeComponent<CombinedProps, Props>(
   styled,
+  volumesContainer(),
   SectionErrorBoundary,
-)(SupportTicketDrawer);
+);
+
+export default enhanced(SupportTicketDrawer);

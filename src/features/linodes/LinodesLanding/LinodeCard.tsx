@@ -14,18 +14,17 @@ import Typography from 'src/components/core/Typography';
 import Grid from 'src/components/Grid';
 import LinearProgress from 'src/components/LinearProgress';
 import Tags from 'src/components/Tags';
+import typeContainer, { WithTypeProps } from 'src/containers/type.container';
 import { LinodeConfigSelectionDrawerCallback } from 'src/features/LinodeConfigSelectionDrawer';
 import { linodeInTransition, transitionText } from 'src/features/linodes/transitions';
 import { lishLaunch } from 'src/features/Lish';
 import { sendEvent } from 'src/utilities/analytics';
 import { typeLabelDetails } from '../presentation';
-import hasMutationAvailable, { HasMutationAvailable } from './hasMutationAvailable';
 import IPAddress from './IPAddress';
 import LinodeActionMenu from './LinodeActionMenu';
 import styled, { StyleProps } from './LinodeCard.style';
 import LinodeStatusIndicator from './LinodeStatusIndicator';
 import RegionIndicator from './RegionIndicator';
-import withDisplayType, { WithDisplayType } from './withDisplayType';
 import withNotifications, { WithNotifications } from './withNotifications';
 import withRecentEvent, { WithRecentEvent } from './withRecentEvent';
 
@@ -51,10 +50,9 @@ interface Props {
 
 export type CombinedProps =
   & Props
-  & WithDisplayType
+  & WithTypeProps
   & WithRecentEvent
   & WithNotifications
-  & HasMutationAvailable
   & StyleProps;
 
 export class LinodeCard extends React.PureComponent<CombinedProps> {
@@ -79,10 +77,12 @@ export class LinodeCard extends React.PureComponent<CombinedProps> {
 
   render() {
     const { classes, openConfigDrawer, linodeId, linodeLabel, recentEvent,
-      linodeStatus, linodeBackups, toggleConfirmation, displayType, linodeSpecMemory,
+      linodeStatus, linodeBackups, toggleConfirmation, linodeSpecMemory,
       linodeSpecDisk, linodeSpecVcpus, linodeRegion, linodeIpv4, linodeIpv6, imageLabel, linodeTags,
-      mutationAvailable, linodeNotifications
+      linodeNotifications, type,
     } = this.props;
+    const hasMutationAvailable = type ? Boolean(type.successor) : false;
+    const displayType = type ? type.label : 'Unknown Plan';
 
     return (
       <Grid item xs={12} sm={6} lg={4} xl={3} data-qa-linode={linodeLabel}>
@@ -102,7 +102,7 @@ export class LinodeCard extends React.PureComponent<CombinedProps> {
                 linodeLabel={linodeLabel}
                 linodeNotifications={linodeNotifications}
                 linodeStatus={linodeStatus}
-                mutationAvailable={mutationAvailable}
+                mutationAvailable={hasMutationAvailable}
               />
             }
             action={
@@ -175,10 +175,9 @@ export class LinodeCard extends React.PureComponent<CombinedProps> {
 
 export default compose(
   styled,
-  withDisplayType,
+  typeContainer,
   withRecentEvent,
   withNotifications,
-  hasMutationAvailable,
 )(LinodeCard) as React.ComponentType<Props>;
 
 const ProgressDisplay: React.StatelessComponent<{

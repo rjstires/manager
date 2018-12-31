@@ -1,5 +1,6 @@
 import { shallow } from 'enzyme';
 import * as React from 'react';
+import { types } from 'src/__data__/types';
 import { light } from 'src/themes';
 import { CombinedProps, LinodeRow, RenderFlag } from './LinodeRow';
 
@@ -21,7 +22,6 @@ describe('LinodeRow', () => {
     theme: light,
     recentEvent: undefined,
     openConfigDrawer: jest.fn(),
-    mutationAvailable: false,
     mostRecentBackup: undefined,
     linodeType: 'whatever',
     linodeTags: [],
@@ -36,7 +36,7 @@ describe('LinodeRow', () => {
       enabled: false,
       schedule: { day: 'Friday', window: 'W0' },
     },
-    displayType: 'Some Fancy Name'
+    type: types[0]
   };
 
   const mockNotification: Linode.Notification = {

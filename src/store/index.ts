@@ -1,7 +1,7 @@
 import { applyMiddleware, combineReducers, compose, createStore } from 'redux';
 import thunk from 'redux-thunk';
 import eventsMiddleware from './middleware/events';
-import requestMiddleware from './middleware/request.middleware';
+import orm, { defaultState as ormDefaultState } from './orm';
 import authentication, { defaultState as authenticationDefaultState } from './reducers/authentication';
 import backups, { defaultState as backupsDefaultState } from './reducers/backupDrawer';
 import documentation, { defaultState as documentationDefaultState } from './reducers/documentation';
@@ -9,16 +9,18 @@ import domainDrawer, { defaultState as domainDrawerDefaultState } from './reduce
 import events, { defaultState as eventsDefaultState } from './reducers/events';
 import features, { defaultState as featuresDefaultState } from './reducers/features';
 import notifications, { DEFAULT_STATE as notificationsDefaultState } from './reducers/notifications';
-import orm, { defaultState as ormDefaultState } from './reducers/orm';
 import __resources, { defaultState as resourcesDefaultState } from './reducers/resources';
 import stackScriptDrawer, { defaultState as stackScriptDrawerDefaultState } from './reducers/stackScriptDrawer';
 import tagImportDrawer, { defaultState as tagDrawerDefaultState } from './reducers/tagImportDrawer';
 import volumeDrawer, { defaultState as volumeDrawerDefaultState } from './reducers/volumeDrawer';
+import requestMiddleware from './request/request.middleware';
+import requests, { defaultState as requestsDefaultState } from './request/request.reducer';
 
 const reduxDevTools = (window as any).__REDUX_DEVTOOLS_EXTENSION__;
 
 const reducers = combineReducers<ApplicationState>({
   orm,
+  requests,
   __resources,
   authentication,
   backups,
@@ -45,6 +47,7 @@ const defaultState: ApplicationState = {
   stackScriptDrawer: stackScriptDrawerDefaultState,
   tagImportDrawer: tagDrawerDefaultState,
   volumeDrawer: volumeDrawerDefaultState,
+  requests: requestsDefaultState,
 };
 
 const middleware = applyMiddleware(

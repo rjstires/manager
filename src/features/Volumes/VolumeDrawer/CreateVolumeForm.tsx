@@ -1,11 +1,13 @@
 import { Form, Formik } from 'formik';
 import * as React from 'react';
+import { connect } from 'react-redux';
+import { compose } from 'recompose';
 import { StyleRulesCallback, withStyles, WithStyles } from 'src/components/core/styles';
 import Typography from 'src/components/core/Typography';
 import TagsInput, { Tag } from 'src/components/TagsInput';
 import { MAX_VOLUME_SIZE } from 'src/constants';
-import { createVolume } from 'src/services/volumes';
 import { CreateVolumeSchema } from 'src/services/volumes/volumes.schema.ts';
+import { createVolumeRequest, CreateVolumeRequest } from 'src/store/orm/volume/volume.actions';
 import ConfigSelect from './ConfigSelect';
 import LabelField from './LabelField';
 import LinodeSelect from './LinodeSelect';
@@ -15,6 +17,7 @@ import RegionSelect from './RegionSelect';
 import SizeField from './SizeField';
 import { handleFieldErrors, handleGeneralErrors, isNilOrEmpty, maybeCastToNumber } from './utils';
 import VolumesActionsPanel from './VolumesActionsPanel';
+
 
 type ClassNames = 'copy';
 
@@ -31,10 +34,11 @@ interface Props {
 
 type CombinedProps =
   & Props
+  & WithCreateVolumesRequest
   & WithStyles<ClassNames>;
 
 const CreateVolumeForm: React.StatelessComponent<CombinedProps> = (props) => {
-  const { onClose, onSuccess, classes } = props;
+  const { onClose, onSuccess, classes, dispatchCreateVolumeRequest } = props;
   return (
     <Formik
       initialValues={initialValues}
@@ -47,7 +51,7 @@ const CreateVolumeForm: React.StatelessComponent<CombinedProps> = (props) => {
         /** Status holds our success and generalError messages. */
         setStatus(undefined);
 
-        createVolume({
+        dispatchCreateVolumeRequest({
           label,
           size: maybeCastToNumber(size),
           region: isNilOrEmpty(region) || region === 'none' ? undefined : region,
@@ -55,7 +59,7 @@ const CreateVolumeForm: React.StatelessComponent<CombinedProps> = (props) => {
           config_id: configId === -1 ? undefined : configId,
           tags: tags.map(v => v.value),
         })
-          .then(({filesystem_path, label: volumeLabel }) => {
+          .then(({ filesystem_path, label: volumeLabel }) => {
             resetForm(initialValues);
             setStatus({ success: `Volume scheduled for creation.` });
             setSubmitting(false);
@@ -189,4 +193,12 @@ const initialValues: FormState = {
 
 const styled = withStyles(styles);
 
-export default styled(CreateVolumeForm);
+interface WithCreateVolumesRequest {
+  dispatchCreateVolumeRequest: CreateVolumeRequest;
+}
+
+const withCreateVolumesRequest = connect(undefined, { dispatchCreateVolumeRequest: createVolumeRequest })
+
+const enhanced = compose<CombinedProps, Props>(styled, withCreateVolumesRequest);
+
+export default enhanced(CreateVolumeForm);

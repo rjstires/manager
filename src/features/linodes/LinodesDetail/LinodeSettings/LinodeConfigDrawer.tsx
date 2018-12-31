@@ -1,5 +1,6 @@
 import { pathOr } from 'ramda';
 import * as React from 'react';
+import { compose } from 'recompose';
 import ActionsPanel from 'src/components/ActionsPanel';
 import Button from 'src/components/Button';
 import CircleProgress from 'src/components/CircleProgress';
@@ -19,9 +20,9 @@ import Notice from 'src/components/Notice';
 import Radio from 'src/components/Radio';
 import TextField from 'src/components/TextField';
 import Toggle from 'src/components/Toggle';
+import volumesContainer from 'src/containers/volumes.container';
 import DeviceSelection, { ExtendedDisk, ExtendedVolume } from 'src/features/linodes/LinodesDetail/LinodeRescue/DeviceSelection';
 import { createLinodeConfig, getLinodeConfig, getLinodeDisks, getLinodeKernels, updateLinodeConfig } from 'src/services/linodes';
-import { getVolumes } from 'src/services/volumes';
 import createDevicesFromStrings, { DevicesAsStrings } from 'src/utilities/createDevicesFromStrings';
 import createStringsFromDevices from 'src/utilities/createStringsFromDevices';
 import { getAll, getAllFromEntity } from 'src/utilities/getAll';
@@ -83,15 +84,13 @@ interface State {
   errors?: Error | Linode.ApiFieldError[];
   fields: EditableFields;
   availableDevices: {
-    volumes: ExtendedVolume[];
     disks: ExtendedDisk[];
   }
 }
 
-type CombinedProps = Props & WithStyles<ClassNames>;
+type CombinedProps = Props & WithVolumesProps & WithStyles<ClassNames>;
 
 const getAllKernels = getAll<Linode.Kernel>(getLinodeKernels);
-const getAllVolumes = getAll<Linode.Volume>(getVolumes);
 const getAllLinodeDisks = getAllFromEntity(getLinodeDisks);
 
 class LinodeConfigDrawer extends React.Component<CombinedProps, State> {
@@ -103,7 +102,6 @@ class LinodeConfigDrawer extends React.Component<CombinedProps, State> {
     kernels: [],
     availableDevices: {
       disks: [],
-      volumes: [],
     },
     fields: LinodeConfigDrawer.defaultFieldsValues(this.props.maxMemory),
   };
@@ -186,14 +184,14 @@ class LinodeConfigDrawer extends React.Component<CombinedProps, State> {
   }
 
   render() {
-    const { open, onClose, linodeConfigId } = this.props;
-    const { errors } = this.state;
-    const loading = Object.values(this.state.loading).some(v => v === true);
+    const { open, onClose, linodeConfigId, volumesLoading, volumesError } = this.props;
+    const err = volumesError || this.state.errors;
+    const loading = Object.values(this.state.loading).some(v => v === true) || volumesLoading;
 
     return (
       <Drawer title={`${linodeConfigId ? 'Edit' : 'Add'} Linode Configuration`} open={open} onClose={onClose}>
         <Grid container direction="row">
-          {this.renderContent(errors, loading)}
+          {this.renderContent(err, loading)}
         </Grid>
       </Drawer>
     );
@@ -216,7 +214,7 @@ class LinodeConfigDrawer extends React.Component<CombinedProps, State> {
   renderErrorState = () => <ErrorState errorText="Unable to loading configurations." />;
 
   renderForm = (errors?: Linode.ApiFieldError[]) => {
-    const { onClose, maxMemory, classes } = this.props;
+    const { onClose, maxMemory, classes, volumesData } = this.props;
 
     const {
       kernels,
@@ -355,7 +353,7 @@ class LinodeConfigDrawer extends React.Component<CombinedProps, State> {
           <Typography role="header" variant="h3">Block Device Assignment</Typography>
           <DeviceSelection
             slots={['sda', 'sdb', 'sdc', 'sdd', 'sde', 'sdf', 'sdg', 'sdh']}
-            devices={availableDevices}
+            devices={{ disks: availableDevices.disks, volumes: volumesData }}
             onChange={this.handleDevicesChanges}
             getSelected={slot => pathOr('', [slot], this.state.fields.devices)}
             counter={99}
@@ -477,7 +475,11 @@ class LinodeConfigDrawer extends React.Component<CombinedProps, State> {
   isOpening = (prevState: boolean, currentState: boolean) => prevState === false && currentState === true;
 
   getAvailableDevices = () => {
-    const { linodeId, linodeRegion } = this.props;
+    const { linodeId, linodeRegion, volumesData } = this.props;
+
+    /** Faked it for least impact. */
+    const getAllVolumes = () => Promise.resolve({ data: volumesData });
+
     /** Get all volumes for usage in the block device assignment. */
     getAllVolumes()
       .then(({ data: volumes }) => volumes.reduce((result: Linode.Volume[], volume: Linode.Volume) => {
@@ -630,7 +632,34 @@ class LinodeConfigDrawer extends React.Component<CombinedProps, State> {
 
 const styled = withStyles(styles);
 
-export default styled(LinodeConfigDrawer);
+interface WithVolumesProps {
+  volumesData: ExtendedVolume[];
+  volumesLoading: boolean;
+  volumesError?: Error;
+}
+
+const withVolumes = volumesContainer<WithVolumesProps, Props>(({ data, loading, error }, ownProps) => ({
+  volumesLoading: loading,
+  volumesError: error,
+  volumesData: data
+    .filter((volume) => {
+      const isAttachedToThisLinode = volume.linode_id === ownProps.linodeId;
+      const isUnattached = volume.linode_id === null;
+      const isInRegion = volume.region === ownProps.linodeRegion;
+      const canBeAttachedToThisLinode = isUnattached && isInRegion;
+
+      return isAttachedToThisLinode || canBeAttachedToThisLinode;
+    })
+    .map((volume) => ({ ...volume, _id: `volume-${volume.id}` }))
+}));
+
+
+const enhanced = compose<CombinedProps, Props>(
+  styled,
+  withVolumes,
+);
+
+export default enhanced(LinodeConfigDrawer);
 
 const isUsingCustomRoot = (value: string) => [
   '/dev/sda',

@@ -191,6 +191,7 @@ export class App extends React.Component<CombinedProps, State> {
 
     this.props._requestTypes();
     this.props._requestRegions();
+    this.props._requestVolumes();
     requestDomains();
     requestLinodes();
 

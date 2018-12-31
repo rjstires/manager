@@ -31,6 +31,7 @@ it('renders without crashing', () => {
             userId={123456}
             _requestRegions={jest.fn()}
             _requestTypes={jest.fn()}
+            _requestVolumes={jest.fn()}
             profileLoading={false}
             actions={{
               getAccountSettings: jest.fn(),

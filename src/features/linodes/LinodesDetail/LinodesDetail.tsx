@@ -652,8 +652,8 @@ interface WithTypesProps {
 }
 
 const withTypes = connect((state: ApplicationState) => {
-  const { error, loading, data } = state.orm.type;
-  const { itemsById } = data;
+  const { itemsById } = state.orm.type;
+  const { error, loading } = state.requests.type.read;
 
   return {
     typesError: error,

@@ -1,10 +1,12 @@
 import { StyleRulesCallback, withStyles, WithStyles } from '@material-ui/core/styles';
 import { Form, Formik } from 'formik';
 import * as React from 'react';
+import { connect } from 'react-redux';
+import { compose } from 'recompose';
 import TagsInput, { Tag } from 'src/components/TagsInput';
 import { updateVolumes$ } from 'src/features/Volumes/WithEvents';
-import { updateVolume } from 'src/services/volumes';
 import { UpdateVolumeSchema } from 'src/services/volumes/volumes.schema';
+import { updateVolumeRequest, UpdateVolumeRequest } from 'src/store/orm/volume/volume.actions';
 import LabelField from './LabelField';
 import NoticePanel from './NoticePanel';
 import { handleFieldErrors, handleGeneralErrors } from './utils';
@@ -23,7 +25,10 @@ interface Props {
   volumeId: number;
 }
 
-type CombinedProps = Props & WithStyles<ClassNames>;
+type CombinedProps =
+  & Props
+  & WithUpdateVolumeRequest
+  & WithStyles<ClassNames>;
 
 /** Single field posts like rename/resize dont have validation schemas in services */
 const validationSchema = UpdateVolumeSchema;
@@ -33,7 +38,7 @@ interface FormState {
 }
 
 const RenameVolumeForm: React.StatelessComponent<CombinedProps> = (props) => {
-  const { volumeId, volumeLabel, volumeTags, onClose } = props;
+  const { volumeId, volumeLabel, volumeTags, onClose, dispatchUpdateVolumeRequest } = props;
   const initialValues: FormState = { label: volumeLabel, tags: volumeTags };
 
   return (
@@ -44,10 +49,7 @@ const RenameVolumeForm: React.StatelessComponent<CombinedProps> = (props) => {
 
         setSubmitting(true);
 
-        updateVolume(volumeId, {
-          label,
-          tags: tags.map(v => v.value),
-        })
+        dispatchUpdateVolumeRequest({ id: volumeId, label, tags: tags.map(v => v.value) })
           .then(response => {
             resetForm();
             updateVolumes$.next(true);
@@ -109,7 +111,14 @@ const RenameVolumeForm: React.StatelessComponent<CombinedProps> = (props) => {
   );
 };
 
-
 const styled = withStyles(styles);
 
-export default styled(RenameVolumeForm);
+interface WithUpdateVolumeRequest {
+  dispatchUpdateVolumeRequest: UpdateVolumeRequest;
+}
+
+const enhanced = compose<CombinedProps, Props>(
+  styled,
+  connect(undefined, { dispatchUpdateVolumeRequest: updateVolumeRequest })
+)
+export default enhanced(RenameVolumeForm);

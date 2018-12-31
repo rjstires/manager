@@ -5,14 +5,14 @@ type Fields = Linode.LinodeType;
 class Type extends Model<Fields> {
 }
 
-Type.modelName = 'Type';
+Type.modelName = 'type';
 
 Type.fields = {
   id: attr(),
   disk: attr(),
   class: attr(),
   price: attr(),
-  successor: fk('Type'),
+  successor: fk('type'),
   label: attr(),
   addons: attr(),
   network_out: attr(),

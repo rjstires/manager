@@ -5,13 +5,12 @@ import Tooltip from 'src/components/core/Tooltip';
 import Typography from 'src/components/core/Typography';
 import TableCell from 'src/components/TableCell';
 import TableRow from 'src/components/TableRow';
+import typeContainer from 'src/containers/type.container';
 import { LinodeConfigSelectionDrawerCallback } from 'src/features/LinodeConfigSelectionDrawer';
 import { linodeInTransition } from 'src/features/linodes/transitions';
-import hasMutationAvailable, { HasMutationAvailable } from '../hasMutationAvailable';
 import IPAddress from '../IPAddress';
 import LinodeActionMenu from '../LinodeActionMenu';
 import RegionIndicator from '../RegionIndicator';
-import withDisplayType, { WithDisplayType } from '../withDisplayType';
 import withNotifications, { WithNotifications } from '../withNotifications';
 import withRecentEvent, { WithRecentEvent } from '../withRecentEvent';
 import styled, { StyleProps } from './LinodeRow.style';
@@ -34,12 +33,15 @@ interface Props {
   toggleConfirmation: (bootOption: Linode.BootAction, linodeId: number, linodeLabel: string) => void;
 }
 
+interface WithTypeProps {
+  type: undefined | Linode.LinodeType;
+}
+
 export type CombinedProps =
   & Props
-  & HasMutationAvailable
-  & WithDisplayType
   & WithRecentEvent
   & WithNotifications
+  & WithTypeProps
   & StyleProps
 
 export const LinodeRow: React.StatelessComponent<CombinedProps> = (props) => {
@@ -55,13 +57,14 @@ export const LinodeRow: React.StatelessComponent<CombinedProps> = (props) => {
     linodeStatus,
     linodeTags,
     mostRecentBackup,
-    mutationAvailable,
     openConfigDrawer,
     toggleConfirmation,
-    displayType,
     recentEvent,
   } = props;
   const loading = linodeInTransition(linodeStatus, recentEvent);
+  const { type } = props;
+  const hasMutationAvailable = type ? Boolean(type.successor) : false;
+  const displayType = type ? type.label : 'Unknown Plan';
 
   const headCell = <LinodeRowHeadCell
     loading={loading}
@@ -102,7 +105,7 @@ export const LinodeRow: React.StatelessComponent<CombinedProps> = (props) => {
         <TableCell className={classes.actionCell} data-qa-notifications>
           <div className={classes.actionInner}>
             <RenderFlag
-              mutationAvailable={mutationAvailable}
+              mutationAvailable={hasMutationAvailable}
               linodeNotifications={linodeNotifications}
               classes={classes}
             />
@@ -124,8 +127,7 @@ export const LinodeRow: React.StatelessComponent<CombinedProps> = (props) => {
 const enhanced = compose<CombinedProps, Props>(
   styled,
   withRecentEvent,
-  withDisplayType,
-  hasMutationAvailable,
+  typeContainer,
   withNotifications,
 );
 

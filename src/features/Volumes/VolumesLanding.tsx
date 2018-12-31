@@ -5,6 +5,7 @@ import { connect, Dispatch } from 'react-redux';
 import { Link, RouteComponentProps } from 'react-router-dom';
 import { compose } from 'recompose';
 import { bindActionCreators } from 'redux';
+import { createSelector, createStructuredSelector } from 'reselect';
 import VolumesIcon from 'src/assets/addnewmenu/volume.svg';
 import AddNewLink from 'src/components/AddNewLink';
 import CircleProgress from 'src/components/CircleProgress';
@@ -18,7 +19,8 @@ import setDocs from 'src/components/DocsSidebar/setDocs';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 import Grid from 'src/components/Grid';
 import LinearProgress from 'src/components/LinearProgress';
-import paginate, { PaginationProps } from 'src/components/Pagey';
+import OrderBy from 'src/components/OrderBy';
+import Paginate from 'src/components/Paginate';
 import PaginationFooter from 'src/components/PaginationFooter';
 import Placeholder from 'src/components/Placeholder';
 import Table from 'src/components/Table';
@@ -27,15 +29,13 @@ import TableRowError from 'src/components/TableRowError';
 import Tags from 'src/components/Tags';
 import { BlockStorage } from 'src/documentation';
 import { resetEventsPolling } from 'src/events';
-import { getLinodes, getLinodeVolumes } from 'src/services/linodes';
-import { deleteVolume, detachVolume, getVolumes } from 'src/services/volumes';
+import { deleteVolume, detachVolume } from 'src/services/volumes';
+import { orm } from 'src/store/orm';
 import { openForClone, openForConfig, openForCreating, openForEdit, openForResize } from 'src/store/reducers/volumeDrawer';
 import { formatRegion } from 'src/utilities';
-import { generateInFilter } from 'src/utilities/requestFilters';
 import DestructiveVolumeDialog from './DestructiveVolumeDialog';
 import VolumeAttachmentDrawer from './VolumeAttachmentDrawer';
 import VolumesActionMenu from './VolumesActionMenu';
-import WithEvents from './WithEvents';
 
 type ClassNames = 'root'
   | 'title'
@@ -46,7 +46,7 @@ type ClassNames = 'root'
   | 'volumesWrapper'
   | 'linodeVolumesWrapper';
 
-  type TagClassNames = 'tagWrapper';
+type TagClassNames = 'tagWrapper';
 
 
 const styles: StyleRulesCallback<ClassNames> = (theme) => ({
@@ -137,8 +137,8 @@ interface State {
 type RouteProps = RouteComponentProps<{ linodeId: string }>;
 
 type CombinedProps =
+  & WithVolumesProps
   & Props
-  & PaginationProps<ExtendedVolume>
   & DispatchProps
   & RouteProps
   & InjectedNotistackProps
@@ -147,6 +147,7 @@ type CombinedProps =
 interface TagProps {
   tags: string[];
 }
+
 type CombinedTagsProps = TagProps & WithStyles<TagClassNames>;
 
 class RenderTagsBase extends React.Component<CombinedTagsProps, {}> {
@@ -173,8 +174,6 @@ class VolumesLanding extends React.Component<CombinedProps, State> {
     },
   };
 
-  mounted: boolean = false;
-
   static docs: Linode.Doc[] = [
     BlockStorage,
     {
@@ -184,25 +183,11 @@ class VolumesLanding extends React.Component<CombinedProps, State> {
     },
   ];
 
-  componentDidMount() {
-    this.mounted = true;
-
-    this.props.request();
-  }
-
-  componentWillUnmount() {
-    this.mounted = false;
-  }
-
   handleCloseAttachDrawer = () => {
     this.setState({ attachmentDrawer: { open: false } });
   }
 
-  handleAttach = (
-    volumeID: number,
-    label: string,
-    regionID: string
-  ) => {
+  handleAttach = (volumeID: number, label: string, regionID: string) => {
     this.setState({
       attachmentDrawer: {
         open: true,
@@ -234,97 +219,102 @@ class VolumesLanding extends React.Component<CombinedProps, State> {
   }
 
   render() {
-    const {
-      classes,
-      loading,
-      count,
-      page,
-      pageSize,
-    } = this.props;
+    const { classes, volumesData, volumesLoading, volumesError } = this.props;
 
-    if (loading) {
+    if (volumesLoading) {
       return this.renderLoading();
     }
 
-    if (count === 0) {
+    if (volumesData.length === 0) {
       return this.renderEmpty();
     }
 
     const isVolumesLanding = this.props.match.params.linodeId === undefined;
 
     return (
-      <React.Fragment>
-        <DocumentTitleSegment segment="Volumes" />
-        <Grid container justify="space-between" alignItems="flex-end" style={{ marginTop: 8 }}>
-          <Grid item>
-            <Typography role="header" variant="h1" className={classes.title} data-qa-title >
-              Volumes
-            </Typography>
-          </Grid>
-          <Grid item>
-            <Grid container alignItems="flex-end">
-              <Grid item>
-                <AddNewLink
-                  onClick={this.openCreateVolumeDrawer}
-                  label="Create a Volume"
-                />
-              </Grid>
-            </Grid>
-          </Grid>
-        </Grid>
-        <Paper>
-          <Table aria-label="List of Volumes" className={isVolumesLanding ? classes.volumesWrapper : classes.linodeVolumesWrapper}>
-            <TableHead>
-              <TableRow>
-                <TableCell className={classes.labelCol}>Label</TableCell>
-                {isVolumesLanding && <TableCell>Region</TableCell>}
-                <TableCell className={classes.sizeCol}>Size</TableCell>
-                <TableCell className={classes.pathCol}>File System Path</TableCell>
-                {isVolumesLanding && <TableCell className={classes.attachmentCol}>Attached To</TableCell>}
-                <TableCell />
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {this.renderContent()}
-            </TableBody>
-          </Table>
-        </Paper>
-        <PaginationFooter
-          count={count}
-          page={page}
-          pageSize={pageSize}
-          handlePageChange={this.props.handlePageChange}
-          handleSizeChange={this.props.handlePageSizeChange}
-          eventCategory="volumes landing"
-        />
-        <VolumeAttachmentDrawer
-          open={this.state.attachmentDrawer.open}
-          volumeID={this.state.attachmentDrawer.volumeID || 0}
-          volumeLabel={this.state.attachmentDrawer.volumeLabel || ''}
-          linodeRegion={this.state.attachmentDrawer.linodeRegion || ''}
-          onClose={this.handleCloseAttachDrawer}
-        />
-        <DestructiveVolumeDialog
-          open={this.state.destructiveDialog.open}
-          mode={this.state.destructiveDialog.mode}
-          onClose={this.closeDestructiveDialog}
-          onDetach={this.detachVolume}
-          onDelete={this.deleteVolume}
-        />
-      </React.Fragment>
+      <OrderBy data={volumesData} orderBy={'label'} order={'asc'}>
+        {({ data: orderedData, handleOrderChange, order, orderBy }) => {
+          return (
+            <Paginate data={orderedData}>
+              {({ count, data: paginatedData, handlePageChange, handlePageSizeChange, page, pageSize }) => {
+                return (
+                  <React.Fragment>
+                    <DocumentTitleSegment segment="Volumes" />
+                    <Grid container justify="space-between" alignItems="flex-end" style={{ marginTop: 8 }}>
+                      <Grid item>
+                        <Typography role="header" variant="h1" className={classes.title} data-qa-title >
+                          Volumes
+                    </Typography>
+                      </Grid>
+                      <Grid item>
+                        <Grid container alignItems="flex-end">
+                          <Grid item>
+                            <AddNewLink
+                              onClick={this.openCreateVolumeDrawer}
+                              label="Create a Volume"
+                            />
+                          </Grid>
+                        </Grid>
+                      </Grid>
+                    </Grid>
+                    <Paper>
+                      <Table aria-label="List of Volumes" className={isVolumesLanding ? classes.volumesWrapper : classes.linodeVolumesWrapper}>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell className={classes.labelCol}>Label</TableCell>
+                            {isVolumesLanding && <TableCell>Region</TableCell>}
+                            <TableCell className={classes.sizeCol}>Size</TableCell>
+                            <TableCell className={classes.pathCol}>File System Path</TableCell>
+                            {isVolumesLanding && <TableCell className={classes.attachmentCol}>Attached To</TableCell>}
+                            <TableCell />
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {this.renderContent(paginatedData, volumesError)}
+                        </TableBody>
+                      </Table>
+                    </Paper>
+                    <PaginationFooter
+                      count={count}
+                      page={page}
+                      pageSize={pageSize}
+                      handlePageChange={handlePageChange}
+                      handleSizeChange={handlePageSizeChange}
+                      eventCategory="volumes landing"
+                    />
+                    <VolumeAttachmentDrawer
+                      open={this.state.attachmentDrawer.open}
+                      volumeID={this.state.attachmentDrawer.volumeID || 0}
+                      volumeLabel={this.state.attachmentDrawer.volumeLabel || ''}
+                      linodeRegion={this.state.attachmentDrawer.linodeRegion || ''}
+                      onClose={this.handleCloseAttachDrawer}
+                    />
+                    <DestructiveVolumeDialog
+                      open={this.state.destructiveDialog.open}
+                      mode={this.state.destructiveDialog.mode}
+                      onClose={this.closeDestructiveDialog}
+                      onDetach={this.detachVolume}
+                      onDelete={this.deleteVolume}
+                    />
+                  </React.Fragment>
+                );
+              }}
+            </Paginate>
+          )
+        }}
+      </OrderBy>
     );
   }
 
-  renderContent = () => {
-    const { error, data: volumes } = this.props;
+  renderContent = (data: ExtendedVolume[], error?: Error) => {
 
     if (error) {
       return this.renderErrors(error);
     }
 
 
-    if (volumes && this.props.count > 0) {
-      return this.renderData(volumes);
+    if (data && data.length > 0) {
+      return this.renderData(data);
     }
 
     return null;
@@ -440,7 +430,6 @@ class VolumesLanding extends React.Component<CombinedProps, State> {
                 onAttach={this.handleAttach}
                 onDetach={this.handleDetach}
                 poweredOff={volume.linodeStatus === 'offline'}
-                onDelete={this.handleDelete}
               />
             </TableCell>
           </TableRow>
@@ -526,79 +515,59 @@ const connected = connect(undefined, mapDispatchToProps);
 
 const documented = setDocs(VolumesLanding.docs);
 
-const updatedRequest = (ownProps: RouteProps, params: any, filters: any) => {
-  const linodeId = path<string>(['match', 'params', 'linodeId'], ownProps);
+/** The volume must have linodeLabel and linodeStatus if it has linodeId */
+const styled = withStyles(styles);
 
-  const req: (params: any, filter: any) => Promise<Linode.ResourcePage<Linode.Volume>>
-    = linodeId
-      ? getLinodeVolumes.bind(undefined, linodeId)
-      : getVolumes;
-
-  return req(params, filters)
-    .then((volumesResponse) => {
-
-      /** If we dont have a linodeId, we  */
-      if (linodeId) {
-        return Promise.resolve(volumesResponse);
-      }
-      /*
-       * Iterate over all the volumes data and find the ones that
-       * have a linodeId property that is not null and create an X-Filter
-       * that we can use in the getLinodes() request
-       */
-      const linodeIDs = volumesResponse.data.map(volume => volume.linode_id).filter(Boolean);
-      const xFilter = generateInFilter('id', linodeIDs);
-
-      return getLinodes(undefined, xFilter)
-        .then((linodesResponse) => {
-          const volumesWithLinodeData = volumesResponse.data.map(eachVolume => {
-            /*
-             * Iterate over all the linode data and find a match between
-             * the volumes linode ID and the Linode data id. If there's a match
-             * it means that the Linode is attached to the volume and the Linode
-             * status and label needs needs to be appended to the result data
-             */
-            for (const eachLinode of linodesResponse.data) {
-              if (eachLinode.id === eachVolume.linode_id) {
-                return {
-                  ...eachVolume,
-                  linodeLabel: eachLinode.label,
-                  linodeStatus: eachLinode.status
-                }
-              }
-            }
-            /*
-             * Otherwise, this volume is not attached to a Linode
-             */
-            return eachVolume;
-          });
-
-          return {
-            ...volumesResponse,
-            data: volumesWithLinodeData,
-          }
-        })
-        .catch((err) => {
-          /*
-           * If getting the Linode data fails, no problem.
-           * Just return the volumes
-           */
-          return volumesResponse;
-        });
-    });
+interface WithVolumesProps {
+  volumesData: Linode.Volume[];
+  volumesLoading: boolean;
+  volumesError?: Error;
 }
 
-const paginated = paginate(updatedRequest);
+const addLinodeDetailsToVolume = (linodes: Linode.Linode[]) => (volume: Linode.Volume) => {
+  const { linode_id } = volume;
+  if (!linode_id) { return volume };
 
-const withEvents = WithEvents();
+  const linode = linodes.find((l) => l.id === linode_id);
+  if (!linode) { return volume; }
 
-const styled = withStyles(styles);
+  return {
+    ...volume,
+    linodeStatus: linode.status,
+    linodeLabel: linode.label,
+  };
+};
+
+const volumesDataSelector = (linodeId?: number) => createSelector(
+  (state: ApplicationState) => state.orm,
+  (state: ApplicationState) => state.__resources.linodes.entities,
+  (database, linodes) => {
+    const session = orm.session(database);
+    const volumes = session.volume.all();
+
+    const set = linodeId
+      ? volumes.filter({ linode_id: Number(linodeId) })
+      : volumes;
+
+    return set.toRefArray().map(addLinodeDetailsToVolume(linodes))
+  }
+);
+
+const mapStateToProps = createStructuredSelector({
+  volumesData: (state: ApplicationState, ownProps: RouteProps) => {
+    const linodeId = path<number>(['match', 'params', 'linodeId'], ownProps);
+    return volumesDataSelector(linodeId)(state);
+  },
+  volumesLoading: (state: ApplicationState) => state.requests.volume.read.loading,
+  volumesError: (state: ApplicationState) => state.requests.volume.read.loading,
+});
+
+const withVolumes = connect(mapStateToProps);
 
 export default compose<CombinedProps, Props>(
   connected,
   documented,
-  paginated,
+  withVolumes,
   styled,
-  withEvents,
   withSnackbar
 )(VolumesLanding);

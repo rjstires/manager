@@ -1,7 +1,6 @@
 import { compose, take } from 'ramda';
 import * as React from 'react';
 import { Link } from 'react-router-dom';
-import { Subscription } from 'rxjs/Subscription';
 import Hidden from 'src/components/core/Hidden';
 import Paper from 'src/components/core/Paper';
 import { StyleRulesCallback, withStyles, WithStyles } from 'src/components/core/styles';
@@ -11,12 +10,12 @@ import TableCell from 'src/components/core/TableCell';
 import TableRow from 'src/components/core/TableRow';
 import Typography from 'src/components/core/Typography';
 import Grid from 'src/components/Grid';
+import OrderBy from 'src/components/OrderBy';
 import TableRowEmptyState from 'src/components/TableRowEmptyState';
 import TableRowError from 'src/components/TableRowError';
 import TableRowLoading from 'src/components/TableRowLoading';
-import { events$ } from 'src/events';
+import volumesContainer, { Props as WithVolumesProps } from 'src/containers/volumes.container';
 import RegionIndicator from 'src/features/linodes/LinodesLanding/RegionIndicator';
-import { getVolumes } from 'src/services/volumes';
 import DashboardCard from '../DashboardCard';
 
 type ClassNames =
@@ -42,62 +41,10 @@ const styles: StyleRulesCallback<ClassNames> = (theme) => ({
   },
 });
 
-interface State {
-  loading: boolean;
-  errors?: Linode.ApiFieldError[];
-  data?: Linode.Volume[];
-  results?: number;
-}
 
-type CombinedProps = WithStyles<ClassNames>;
+type CombinedProps = WithVolumesProps & WithStyles<ClassNames>;
 
-class VolumesDashboardCard extends React.Component<CombinedProps, State> {
-  state: State = {
-    loading: true,
-  };
-
-  mounted: boolean = false;
-
-  subscription: Subscription;
-
-  requestData = (initial: boolean = false) => {
-    if (!this.mounted) { return; }
-
-    if (initial) {
-      this.setState({ loading: true });
-    }
-
-    getVolumes({ page_size: 25 }, { '+order_by': 'label', '+order': 'asc' })
-      .then(({ data, results }) => {
-        if (!this.mounted) { return; }
-        this.setState({
-          loading: false,
-          data: take(5, data),
-          results,
-        })
-      })
-      .catch((error) => {
-        this.setState({ loading: false, errors: [{ reason: 'Unable to load Volumes.' }] })
-      })
-  }
-
-  componentDidMount() {
-    this.mounted = true;
-
-    this.requestData(true);
-
-    this.subscription = events$
-      .filter(e => !e._initial)
-      .filter(e => Boolean(e.entity && e.entity.type === 'volume'))
-      .filter(e => Boolean(this.state.data && this.state.data.length < 5) || isFoundInData(e.entity!.id, this.state.data))
-      .subscribe(() => this.requestData(false));
-  }
-
-  componentWillUnmount() {
-    this.mounted = false;
-    this.subscription.unsubscribe();
-  }
-
+class VolumesDashboardCard extends React.PureComponent<CombinedProps> {
   render() {
     return (
       <DashboardCard title="Volumes" headerAction={this.renderAction} data-qa-dash-volume>
@@ -112,22 +59,22 @@ class VolumesDashboardCard extends React.Component<CombinedProps, State> {
     );
   }
 
-  renderAction = () => this.state.results && this.state.results > 5
+  renderAction = () => this.props.volumesData.length > 5
     ? <Link to={'/volumes'}>View All</Link>
     : null;
 
   renderContent = () => {
-    const { loading, data, errors } = this.state;
-    if (loading) {
+    const { volumesData, volumesError, volumesLoading } = this.props;
+    if (volumesLoading) {
       return this.renderLoading();
     }
 
-    if (errors) {
-      return this.renderErrors(errors);
+    if (volumesError) {
+      return this.renderErrors(volumesError);
     }
 
-    if (data && data.length > 0) {
-      return this.renderData(data);
+    if (volumesData.length > 0) {
+      return this.renderData(volumesData);
     }
 
     return this.renderEmpty();
@@ -137,46 +84,55 @@ class VolumesDashboardCard extends React.Component<CombinedProps, State> {
     return <TableRowLoading colSpan={3} />
   };
 
-  renderErrors = (errors: Linode.ApiFieldError[]) =>
+  renderErrors = (errors: Error) =>
     <TableRowError colSpan={3} message={`Unable to load Volumes.`} />;
 
   renderEmpty = () => <TableRowEmptyState colSpan={2} />;
 
   renderData = (data: Linode.Volume[]) => {
     const { classes } = this.props;
-
-    return data.map(({ label, region, size, status }) => (
-      <TableRow key={label} data-qa-volume={label}>
-        <TableCell className={classes.labelCol}>
-          <Grid container direction="column" spacing={8}>
-            <Grid item style={{ paddingBottom: 0 }}>
-              <Typography className={classes.wrapHeader} variant="h3">
-                {label}
-              </Typography>
-            </Grid>
-            <Grid item>
-              <Typography variant="body1" data-qa-volume-status>
-                {status}, {size} GiB
-              </Typography>
-            </Grid>
-          </Grid>
-        </TableCell>
-        <Hidden xsDown>
-          <TableCell className={classes.moreCol} data-qa-volume-region>
-            <RegionIndicator region={region} />
-          </TableCell>
-        </Hidden>
-      </TableRow>
-    ));
+    return (
+      <OrderBy data={data} order={'desc'} orderBy={'label'}>
+        {({ data: orderedData }) => (
+          <>
+            {
+              take(5, orderedData)
+                .map(({ label, region, size, status }) => (
+                  <TableRow key={label} data-qa-volume={label}>
+                    <TableCell className={classes.labelCol}>
+                      <Grid container direction="column" spacing={8}>
+                        <Grid item style={{ paddingBottom: 0 }}>
+                          <Typography className={classes.wrapHeader} variant="h3">
+                            {label}
+                          </Typography>
+                        </Grid>
+                        <Grid item>
+                          <Typography variant="body1" data-qa-volume-status>
+                            {status}, {size} GiB
+                        </Typography>
+                        </Grid>
+                      </Grid>
+                    </TableCell>
+                    <Hidden xsDown>
+                      <TableCell className={classes.moreCol} data-qa-volume-region>
+                        <RegionIndicator region={region} />
+                      </TableCell>
+                    </Hidden>
+                  </TableRow>
+                ))
+            }
+          </>
+        )}
+      </OrderBy>
+    )
   };
-
 }
 
 const styled = withStyles(styles);
 
-const enhanced = compose(styled);
-
-const isFoundInData = (id: number, data: Linode.Volume[] = []): boolean =>
-  data.reduce((result, volume) => result || volume.id === id, false);
+const enhanced = compose(
+  styled,
+  volumesContainer(),
+);
 
 export default enhanced(VolumesDashboardCard) as React.ComponentType<{}>;

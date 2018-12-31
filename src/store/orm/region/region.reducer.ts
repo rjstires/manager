@@ -1,27 +1,21 @@
 import { Reducer } from 'redux';
 import { isType } from 'typescript-fsa';
 import { defaultState, session } from '..';
-import { finish } from './region.actions';
+import { regionsRequestPageFinish } from './region.actions';
 
 type State = ApplicationState['orm']['region'];
 
 const reducer: Reducer<State> = (state = defaultState.region, action) => {
-  const { Region } = session;
+  const { region: Region } = session;
 
-  if (isType(action, finish)) {
+  if (isType(action, regionsRequestPageFinish)) {
     const { payload } = action;
 
-    for (const region of payload) {
+    for (const region of payload.data) {
       Region.create(region);
     }
-
-    return {
-      loading: false,
-      data: session.state.Region,
-      lastUpdated: Date.now(),
-    };
+    return session.state.region;
   }
-
   return state;
 };
 

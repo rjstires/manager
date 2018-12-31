@@ -1,9 +1,10 @@
 import { InjectedNotistackProps, withSnackbar } from 'notistack';
-import { assoc, clamp, compose, map, path, pathOr, prop } from 'ramda';
+import { assoc, clamp, compose, map, path, pathOr } from 'ramda';
 import * as React from 'react';
 import ActionsPanel from 'src/components/ActionsPanel';
 import AddNewLink from 'src/components/AddNewLink';
 import Button from 'src/components/Button';
+import CircleProgress from 'src/components/CircleProgress';
 import Paper from 'src/components/core/Paper';
 import { StyleRulesCallback, withStyles, WithStyles } from 'src/components/core/styles';
 import Typography from 'src/components/core/Typography';
@@ -11,10 +12,10 @@ import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 import ErrorState from 'src/components/ErrorState';
 import PromiseLoader, { PromiseLoaderResponse } from 'src/components/PromiseLoader';
 import SectionErrorBoundary from 'src/components/SectionErrorBoundary';
+import volumesContainer from 'src/containers/volumes.container';
 import { resetEventsPolling } from 'src/events';
 import { withLinode } from 'src/features/linodes/LinodesDetail/context';
 import { getLinodeDisks, rescueLinode } from 'src/services/linodes';
-import { getVolumes } from 'src/services/volumes';
 import createDevicesFromStrings, { DevicesAsStrings } from 'src/utilities/createDevicesFromStrings';
 import DeviceSelection, { ExtendedDisk, ExtendedVolume } from './DeviceSelection';
 
@@ -47,7 +48,6 @@ interface ContextProps {
 
 interface PromiseLoaderProps {
   disks: PromiseLoaderResponse<ExtendedDisk[]>;
-  volumes: PromiseLoaderResponse<ExtendedVolume[]>;
 }
 
 interface State {
@@ -55,13 +55,13 @@ interface State {
   errors?: Linode.ApiFieldError[];
   devices: {
     disks: ExtendedDisk[];
-    volumes: ExtendedVolume[];
   };
   config?: Linode.Config;
   counter: number;
 }
 
 type CombinedProps = PromiseLoaderProps
+  & WithVolumesProps
   & ContextProps
   & WithStyles<ClassNames>
   & InjectedNotistackProps;
@@ -69,19 +69,10 @@ type CombinedProps = PromiseLoaderProps
 export class LinodeRescue extends React.Component<CombinedProps, State> {
   constructor(props: CombinedProps) {
     super(props);
-    const filteredVolumes = props.volumes.response.filter((volume) => {
-      // whether volume is not attached to any Linode
-      const volumeIsUnattached = volume.linode_id === null;
-      // whether volume is attached to the current Linode we're viewing
-      const volumeIsAttachedToCurrentLinode = volume.linode_id === props.linodeId;
-      // whether volume is in the same region as the current Linode we're viewing
-      const volumeAndLinodeRegionMatch = props.linodeRegion === volume.region;
-      return (volumeIsAttachedToCurrentLinode || volumeIsUnattached) && volumeAndLinodeRegionMatch;
-    });
+
     this.state = {
       devices: {
         disks: props.disks.response || [],
-        volumes: filteredVolumes || [],
       },
       counter: 1,
       rescueDevices: {
@@ -126,7 +117,7 @@ export class LinodeRescue extends React.Component<CombinedProps, State> {
           [{ reason: 'There was an issue rescuing your Linode.' }],
           ['response', 'data', 'errors'],
           errorResponse
-         )
+        )
           .forEach((err: Linode.ApiFieldError) => enqueueSnackbar(err.reason, {
             variant: 'error'
           }));
@@ -151,10 +142,16 @@ export class LinodeRescue extends React.Component<CombinedProps, State> {
     const { devices } = this.state;
     const {
       disks: { error: disksError },
-      volumes: { error: volumesError },
+      volumesData,
+      volumesError,
+      volumesLoading,
       classes,
       linodeLabel,
     } = this.props;
+
+    if (volumesLoading) {
+      return <CircleProgress />
+    }
 
     if (disksError) {
       return (
@@ -193,7 +190,7 @@ export class LinodeRescue extends React.Component<CombinedProps, State> {
           </Typography>
           <DeviceSelection
             slots={['sda', 'sdb', 'sdc', 'sdd', 'sde', 'sdf', 'sdg']}
-            devices={devices}
+            devices={{ disks: devices.disks, volumes: volumesData }}
             onChange={this.onChange}
             getSelected={slot => pathOr('', ['rescueDevices', slot], this.state)}
             counter={this.state.counter}
@@ -224,19 +221,7 @@ export const preloaded = PromiseLoader({
         map((disk: Linode.Disk) => assoc('_id', `disk-${disk.id}`, disk)),
         path(['data']),
       ),
-  ),
-
-  /** @todo filter for available */
-  volumes: ({ linodeId, linodeRegion }): Promise<ExtendedVolume[]> => getVolumes()
-    .then(
-      compose<
-        Linode.ResourcePage<Linode.Volume>,
-        Linode.Volume[],
-        ExtendedVolume[]>(
-          map(volume => assoc('_id', `volume-${volume.id}`, volume)),
-          prop('data'),
-      ),
-  ),
+    ),
 });
 
 const linodeContext = withLinode((context) => ({
@@ -245,9 +230,32 @@ const linodeContext = withLinode((context) => ({
   linodeLabel: context.data!.label,
 }));
 
+interface WithVolumesProps {
+  volumesLoading: boolean;
+  volumesError?: Error;
+  volumesData: ExtendedVolume[];
+}
+
+const withVolumes = volumesContainer<WithVolumesProps, ContextProps>(({ data, loading, error }, ownProps) => ({
+  volumesLoading: loading,
+  volumesError: error,
+  volumesData: data
+    .filter((volume) => {
+      // whether volume is not attached to any Linode
+      const volumeIsUnattached = volume.linode_id === null;
+      // whether volume is attached to the current Linode we're viewing
+      const volumeIsAttachedToCurrentLinode = volume.linode_id === ownProps.linodeId;
+      // whether volume is in the same region as the current Linode we're viewing
+      const volumeAndLinodeRegionMatch = ownProps.linodeRegion === volume.region;
+      return (volumeIsAttachedToCurrentLinode || volumeIsUnattached) && volumeAndLinodeRegionMatch;
+    })
+    .map((volume) => ({ ...volume, _id: `volume-${volume.id}` }))
+}));
+
 export default compose(
   linodeContext,
   preloaded,
+  withVolumes,
   SectionErrorBoundary,
   styled,
   withSnackbar

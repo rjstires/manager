@@ -1,7 +1,9 @@
 import * as React from 'react';
+import { connect } from 'react-redux';
 import { RouteComponentProps, withRouter } from 'react-router-dom';
-
+import { compose } from 'recompose';
 import ActionMenu, { Action } from 'src/components/ActionMenu/ActionMenu';
+import { DeleteVolumeRequest, deleteVolumeRequest } from 'src/store/orm/volume/volume.actions';
 
 interface Props {
   onShowConfig: (volumeLabel: string, volumePath: string) => void;
@@ -29,7 +31,6 @@ interface Props {
   ) => void;
   onDetach: (volumeID: number) => void;
   poweredOff: boolean;
-  onDelete: (volumeID: number) => void;
   filesystemPath: string;
   label: string;
   linodeLabel: string;
@@ -39,7 +40,7 @@ interface Props {
   size: number;
 }
 
-type CombinedProps = Props & RouteComponentProps<{}>;
+type CombinedProps = Props & WithDeleteVolumesAction & RouteComponentProps<{}>;
 
 class VolumesActionMenu extends React.Component<CombinedProps> {
   handleShowConfig = () => {
@@ -99,9 +100,9 @@ class VolumesActionMenu extends React.Component<CombinedProps> {
   handleDelete = () => {
     const {
       volumeID,
-      onDelete
+      dispatchDeleteVolume,
     } = this.props;
-    onDelete(volumeID);
+    dispatchDeleteVolume(volumeID);
   }
 
   createActions = () => {
@@ -188,4 +189,13 @@ class VolumesActionMenu extends React.Component<CombinedProps> {
   }
 }
 
-export default withRouter(VolumesActionMenu);
+interface WithDeleteVolumesAction {
+  dispatchDeleteVolume: DeleteVolumeRequest;
+}
+
+const enhanced = compose<CombinedProps, Props>(
+  withRouter,
+  connect(undefined, { dispatchDeleteVolume: deleteVolumeRequest }),
+);
+
+export default enhanced(VolumesActionMenu);
