@@ -1,2 +1,2 @@
-import LinodesDetail from './LinodesDetail';
-export default LinodesDetail;
+import LinodeDetail from './LinodeDetail';
+export default LinodeDetail;
